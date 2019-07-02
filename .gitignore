@@ -3,7 +3,3 @@ data/
 
 # ignore *.pyc
 *.pyc
-
-# ignore something
-
-# test set-url
