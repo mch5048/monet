@@ -88,6 +88,3 @@ def flatten(input_, name='flatten'):
     return tf.reshape(tensor=input_, 
                       shape=[-1, out], 
                       name=name)
-
-def fun(name='fun'):
-  return name
