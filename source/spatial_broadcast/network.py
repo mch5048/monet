@@ -23,6 +23,8 @@ def _get_options(spec):
     except KeyError:
         bias_initializer = tf.constant_initializer(value=0.01)
 
+    # this is a minor change, because I want to include
+    # activation = None in .json for clarity sometimes
     try:
         activation = eval(spec['activation'])
     except KeyError:
@@ -75,7 +77,7 @@ def build_network(inputs,
                         num[name] = 1
 
                     # for automatic build of output channels
-                    if spec['filters'] == 'num_input':
+                    if spec['filters'] == 'num_channel':
                         spec['filters'] = num_channel
                         
                     inputs = _build_conv2d(inputs=inputs, 
@@ -85,6 +87,12 @@ def build_network(inputs,
 
                 elif name == 'flatten' and spec:
                     inputs = layers.flatten(inputs=inputs)
+
+                elif name == 'spatial_broadcast':
+                    inputs = layers.spatial_broadcast(z=inputs,
+                                                      w=spec['w'],
+                                                      h=spec['h'],
+                                                      name='spatial_broadcast')
 
                 elif name == 'dense':
                     if not name in num.keys():

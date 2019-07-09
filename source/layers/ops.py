@@ -10,7 +10,7 @@ def conv2d(inputs,
            bias_initializer=tf.constant_initializer(value=0.01),
            activation=None,
            name='conv2d'):
-
+    
     with tf.variable_scope(name):
         in_channels = inputs.get_shape()[-1]
         out_channels = filters
@@ -140,3 +140,36 @@ def flatten(inputs, name='flatten'):
         return tf.reshape(tensor=inputs, 
                           shape=[-1, out], 
                           name=name)
+
+# spatial broadcast operator
+def spatial_broadcast(z, w, h, name='spatial_broadcast'):
+    with tf.name_scope(name):
+        # look at dynamic vs static shape
+        batch_size = tf.shape(z)[0]
+        k = z.get_shape()[-1]
+
+        z_b = tf.tile(input=z, multiples=[1, h * w], name='tile')
+        z_b = tf.reshape(z_b, shape=[batch_size, h, w, k])
+
+        print(z_b.get_shape())
+
+        '''
+        indexing does NOT matter
+        1. square output (because we have square images) 2. channels are order invariant
+        '''
+        x = tf.linspace(-1.0, 1.0, num=w)
+        y = tf.linspace(-1.0, 1.0, num=w)
+        x_b, y_b = tf.meshgrid(x, y)
+        
+        # we need (w, w, 1)
+        x_b = tf.expand_dims(x_b, axis=-1)
+        y_b = tf.expand_dims(y_b, axis=-1)
+
+        # apply concat to each sample in z_b
+        z_sb = tf.map_fn(fn=lambda z_i: tf.concat([z_i, x_b, y_b], axis=-1), 
+                         elems=z_b,
+                         parallel_iterations=True,
+                         back_prop=True,
+                         swap_memory=True,
+                         name='map_concat')
+    return z_sb

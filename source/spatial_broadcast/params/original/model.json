@@ -47,5 +47,35 @@
         }
     ],
 
-    "latent_dim": 10
+    "latent_dim": 10,
+
+    "decoder": [
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 1,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"                
+            }
+        },
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 1,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"                
+            }
+        },
+        {
+            "conv2d": {
+                "filters": "num_channel",
+                "kernel_size": 4,
+                "stride_size": 1,
+                "padding": "SAME",
+                "activation": "None",
+            }
+        },    
+    ]
 }
