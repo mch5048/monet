@@ -13,6 +13,7 @@ class DataPipeline(object):
         # minor hacks for speedy loading
         # changed from .npz to .npy with reduced size
         images = np.load(image_path)
+        print(images.shape)
         images = np.expand_dims(images, axis=-1)
  
         # we only want to see that this spatial broadcast network

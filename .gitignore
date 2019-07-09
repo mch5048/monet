@@ -3,3 +3,6 @@ data/
 
 # ignore *.pyc
 *.pyc
+
+# ignore tmp
+source/spatial_broadcast/tmp

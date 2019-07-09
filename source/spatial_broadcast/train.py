@@ -4,8 +4,6 @@ from network import build_network
 from build_graph import VAE
 from load_data import DataPipeline
 
-import sys
-
 '''
 IN THE FUTURE: remove all the unnecessary print statements
 '''
