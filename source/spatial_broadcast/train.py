@@ -15,15 +15,14 @@ def train(network_specs,
     
     print('creating datapipe...')
     # create images DataPipeline
-    datapipe = DataPipeline(image_path,
-                            training_params)
+    datapipe = DataPipeline(image_path=image_path,
+                            training_params=training_params)
 
     print('creating network model...')
     # create model VAE
-    model = VAE(network_specs,
-                datapipe,
-                training_params,
-                save_path)
+    model = VAE(network_specs=network_specs,
+                datapipe=datapipe,
+                training_params=training_params)
 
     # train the model
     # save_config is flexible

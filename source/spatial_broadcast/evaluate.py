@@ -12,22 +12,16 @@ from visualize import DPlot
 IN THE FUTURE: remove all the unnecessary print statements
 '''
 
-def train(network_specs,
-          training_params,
-          image_path,
-          save_path):
-    
-    print('creating datapipe...')
-    # create images DataPipeline
-    datapipe = DataPipeline(image_path,
-                            training_params)
+def evaluate(network_specs,
+             ckpt_path,
+             scope):
 
     print('creating network model...')
+
     # create model VAE
-    model = VAE(network_specs,
-                datapipe,
-                training_params,
-                save_path)
+    model = VAE(network_specs=network_specs,
+                mode='evaluating',
+                scope=scope)
 
     # train the model
     # save_config is flexible
@@ -36,28 +30,22 @@ def train(network_specs,
  HERE WE GO
 =============
 ''')
-    reconstructed = model.evaluate(n=1, linspace=np.linspace(-2.0, 2.0, 10))
-    DPlot.plot(reconstructed)
+
+    logits, preds = model.evaluate(ckpt_path=ckpt_path, linspace=np.linspace(-2.0, 2.0, 10))
+    DPlot.plot(preds)
 
 if __name__ == '__main__':
     network_specs_json = 'source/spatial_broadcast/params/original/model.json'
-    training_params_json = 'source/spatial_broadcast/params/original/params.json'
 
     with open(network_specs_json, 'r') as f:
         network_specs = json.load(f)
 
+    # ckpt path
+    ckpt_path = 'source/spatial_broadcast/tmp/final.ckpt'
 
-    with open(training_params_json, 'r') as f:
-        training_params = json.load(f)
-
-    # load data
-    # image_path = 'data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
-    image_path = 'data/reduced.npy'
-
-    # save config
-    save_path = 'source/spatial_broadcast/tmp/'
+    # scope to restore variables
+    scope = 'vae/decoder'
 
     train(network_specs=network_specs,
-          training_params=training_params,
-          image_path=image_path,
-          save_path=save_path)
+          ckpt_path=ckpt_path,
+          scope=scope)
