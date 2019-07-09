@@ -1,0 +1,49 @@
+{
+    "encoder": [
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 2,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"
+            }
+        },
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 2,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"
+            }
+        },
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 2,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"
+            }
+        },
+        {
+            "conv2d": {
+                "filters": 64,
+                "kernel_size": 4,
+                "stride_size": 2,
+                "padding": "SAME",
+                "activation": "tf.nn.relu"
+            }
+        },
+        
+        {
+            "flatten": true
+        },
+        {
+            "dense" : {
+                "units": "latent_dim"
+            }
+        }
+    ]
+}

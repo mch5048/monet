@@ -1,17 +1,18 @@
 import tensorflow as tf
 import numpy as np 
 
-def conv2d(input_, 
+def conv2d(inputs, 
            filters, 
            kernel_size, 
            stride_size, 
-           padding='VALID',
+           padding='SAME',
            kernel_initializer=tf.truncated_normal_initializer(stddev=0.01),
            bias_initializer=tf.constant_initializer(value=0.01),
            activation=None,
            name='conv2d'):
+
     with tf.variable_scope(name):
-        in_channels = input_.get_shape()[-1]
+        in_channels = inputs.get_shape()[-1]
         out_channels = filters
         W = tf.get_variable(name='W', 
                             shape=[kernel_size, kernel_size, in_channels, out_channels],
@@ -22,7 +23,7 @@ def conv2d(input_,
                             dtype=tf.float32,
                             initializer=bias_initializer)
 
-        conv = tf.nn.conv2d(input=input_, 
+        conv = tf.nn.conv2d(input=inputs, 
                             filter=W, 
                             strides=[1, stride_size, stride_size, 1], 
                             padding=padding,
@@ -31,41 +32,91 @@ def conv2d(input_,
                               bias=b,
                               name='bias_')
 
+        # only works for some activation functions
+        # need to change this for general case
         if activation:
             return activation(features=conv, 
                               name='activation')
         return conv
 
-def max_pooling2d(input_,
+def conv2d_transpose(inputs,
+                     filters,
+                     kernel_size,
+                     stride_size,
+                     padding='SAME',
+                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.01),
+                     bias_initializer=tf.constant_initializer(value=0.01),
+                     activation=None,
+                     name='conv2d_transpose'):
+    
+    if padding != 'SAME':
+        raise NotImplementedError('only SAME padding is implemented for now')
+
+    with tf.variable_scope(name):
+        input_shape = inputs.get_shape()
+        out_channels = filters
+        
+        N = tf.shape(inputs)[0]
+        H, W = input_shape[1] * stride_size, input_shape[2] * stride_size
+        output_shape = tf.stack([N, H, W, filters])
+
+        W = tf.get_variable(name='W',
+                            shape=[kernel_size, kernel_size, out_channels, input_shape[-1]],
+                            dtype=tf.float32,
+                            initializer=kernel_initializer)
+        b = tf.get_variable(name='b',
+                            shape=[out_channels],
+                            dtype=tf.float32,
+                            initializer=bias_initializer)
+        conv = tf.nn.conv2d_transpose(value=inputs,
+                                      filter=W,
+                                      output_shape=output_shape,
+                                      strides=[1, stride_size, stride_size, 1],
+                                      padding=padding,
+                                      name='conv2d_transpose_')
+        conv = tf.nn.bias_add(value=conv,
+                              bias=b,
+                              name='bias_')
+        # only works for some activation functions
+        # need to change this for general case
+        if activation:
+            return activation(features=conv,
+                              name='activation')
+        return conv
+
+
+
+
+def max_pooling2d(inputs,
                   pool_size,
                   strides,
                   padding='VALID',
                   name='max_pooling2d'):
-    return tf.nn.max_pool(value=input_,
+    return tf.nn.max_pool(value=inputs,
                           ksize=[1, pool_size, pool_size, 1],
                           strides=[1, strides, strides, 1],
                           padding=padding,
                           name='max_pooling2d_')
 
-def dropout(input_, 
+def dropout(inputs, 
             rate=0.5, 
             noise_shape=None, 
             seed=None,
             name='dropout'):
-    return tf.nn.dropout(x=input_,
+    return tf.nn.dropout(x=inputs,
                          keep_prob=1.0 - rate,
                          noise_shape=noise_shape,
                          seed=seed,
                          name=name)
 
-def fc(input_, 
-       units, 
-       kernel_initializer=tf.truncated_normal_initializer(stddev=0.01), 
-       bias_initializer=tf.constant_initializer(value=0.01), 
-       activation=None,
-       name='fc'):
+def dense(inputs, 
+          units, 
+          kernel_initializer=tf.truncated_normal_initializer(stddev=0.01), 
+          bias_initializer=tf.constant_initializer(value=0.01), 
+          activation=None,
+          name='fc'):
     with tf.variable_scope(name):
-        in_shape = input_.get_shape()[1]
+        in_shape = inputs.get_shape()[1]
         W = tf.get_variable(name='W', 
                             shape=[in_shape, units], 
                             dtype=tf.float32,
@@ -74,17 +125,18 @@ def fc(input_,
                             shape=[units],
                             dtype=tf.float32,
                             initializer=bias_initializer)
-        dense = tf.add(tf.matmul(input_, W), b)
+        dense = tf.add(tf.matmul(inputs, W), b)
         
         if activation:
             return activation(features=dense, 
                               name='activation')
         return dense
 
-def flatten(input_, name='flatten'):
-    # [batch_size, ...]
-    shape = input_.get_shape()
-    out = np.product(shape[1:])
-    return tf.reshape(tensor=input_, 
-                      shape=[-1, out], 
-                      name=name)
+def flatten(inputs, name='flatten'):
+    with tf.name_scope(name):
+        # [batch_size, ...]
+        shape = inputs.get_shape()
+        out = np.product(shape[1:])
+        return tf.reshape(tensor=inputs, 
+                          shape=[-1, out], 
+                          name=name)
