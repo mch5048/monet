@@ -48,8 +48,13 @@
     ],
 
     "latent_dim": 10,
-
     "decoder": [
+        {
+            "spatial_broadcast": {
+                "w": 64,
+                "h": 64
+            }
+        },
         {
             "conv2d": {
                 "filters": 64,
@@ -74,8 +79,8 @@
                 "kernel_size": 4,
                 "stride_size": 1,
                 "padding": "SAME",
-                "activation": "None",
+                "activation": "None"                
             }
-        },    
+        }
     ]
 }

@@ -31,7 +31,8 @@ def conv2d(inputs,
         conv = tf.nn.bias_add(value=conv, 
                               bias=b,
                               name='bias_')
-
+        print('conv', conv.get_shape())
+        print('activation', activation)
         # only works for some activation functions
         # need to change this for general case
         if activation:
@@ -77,6 +78,7 @@ def conv2d_transpose(inputs,
         conv = tf.nn.bias_add(value=conv,
                               bias=b,
                               name='bias_')
+
         # only works for some activation functions
         # need to change this for general case
         if activation:
@@ -151,7 +153,7 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
         z_b = tf.tile(input=z, multiples=[1, h * w], name='tile')
         z_b = tf.reshape(z_b, shape=[batch_size, h, w, k])
 
-        print(z_b.get_shape())
+        print('in spatial broadcast', z_b.get_shape())
 
         '''
         indexing does NOT matter
@@ -172,4 +174,5 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
                          back_prop=True,
                          swap_memory=True,
                          name='map_concat')
+        print(z_sb.get_shape())
     return z_sb

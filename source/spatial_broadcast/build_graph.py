@@ -15,11 +15,14 @@ class VAE(object):
 
         # network specs
         self.network_specs = network_specs
+        self.latent_dim = network_specs['latent_dim']
 
+        # datapipe
         self.datapipe = datapipe
         self.inputs = datapipe.images
         self.input_shape = list(self.inputs.shape[1:])
-        
+        self.num_channel = 3
+
         # training_params has all the training parameters
         self.lr = training_params['lr']
         
@@ -30,32 +33,35 @@ class VAE(object):
             self.n_run = int(training_params['epochs'])
 
         with tf.variable_scope(scope):
-            self._build_placeholders()
+            # self._build_placeholders()
             self._build_graph()
             self._build_loss()
             self._build_optimizer()
         self.vars_initializer = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
 
+    '''
     # this placeholder structure WILL BE CHANGED
     # we need to build an input/output pipeline
     def _build_placeholders(self):
         self.input_ph = tf.placeholder(dtype=tf.float32, shape=[None] + self.input_shape, name='input_ph')
         # self.latent_ph = tf.placeholder(dtype=tf.float32, shape=[None, self.latent_size], name='latent_size')
+    '''
 
     def _build_graph(self):
-        self.mu, self.logvar = build_network(inputs=self.input_ph,
-                                             model_specs=self.network_specs['encoder'],
-                                             latent_dim=self.network_specs['latent_dim'],
-                                             name='encoder')
+        encoder = build_network(inputs=self.datapipe.next_element,
+                                model_specs=self.network_specs['encoder'],
+                                latent_dim=self.latent_dim,
+                                name='encoder')
+        self.mu, self.logvar = tf.split(encoder, [self.latent_dim, self.latent_dim], axis=1)
         self.z_samples = misc.sampler_normal(self.mu, self.logvar)
         self.logits = build_network(inputs=self.z_samples,
                                     model_specs=self.network_specs['decoder'],
-                                    num_channel=self.input_shape[-1],
+                                    num_channel=self.num_channel,
                                     name='decoder')
 
     def _build_loss(self):
-        ce_loss = misc.cross_entropy(logits=self.logits, labels=self.input_ph)
+        ce_loss = misc.cross_entropy(logits=self.logits, labels=self.datapipe.next_element)
         kl_loss = misc.kl_divergence(mu=self.mu, logvar=self.logvar)
         self.loss = ce_loss + kl_loss
 
@@ -69,8 +75,8 @@ class VAE(object):
                                     allow_growth=True)
 
         config = tf.ConfigProto(gpu_options=gpu_options,
-                                     inter_op_parallelism_threads=2,
-                                     intra_op_parallelism_threads=2,
+                                     inter_op_parallelism_threads=4,
+                                     intra_op_parallelism_threads=4,
                                      allow_soft_placement=True)
 
         with tf.Session(config=config) as sess:
@@ -83,9 +89,7 @@ class VAE(object):
             n_epoch, epoch_loss = 1, []
             for i in range(self.n_run):
                 try:
-                    b = sess.run(self.datapipe.next_element)
-                    l, _ = sess.run([self.loss, self.train_op],
-                                    feed_dict={self.input_ph: b})
+                    l, _ = sess.run([self.loss, self.train_op])
                     epoch_loss.append(l)
 
                 except tf.errors.OutOfRangeError:

@@ -69,10 +69,12 @@ def build_network(inputs,
     # automatically handle names
     num = {}
 
+    print('we are in build_network')
     with tf.variable_scope(name):
         for block in model_specs:
             for name, spec in block.iteritems():
                 if name == 'conv2d':
+                    print('we are in conv2d')
                     if not name in num.keys():
                         num[name] = 1
 
@@ -95,14 +97,16 @@ def build_network(inputs,
                                                       name='spatial_broadcast')
 
                 elif name == 'dense':
+                    print('we are in dense')
                     if not name in num.keys():
                         num[name] = 1
                     if spec['units'] == 'latent_dim':
-                        spec['units'] = latent_dim
+                        spec['units'] = 2 * latent_dim
                     inputs = _build_dense(inputs=inputs,
                                           spec=spec,
                                           name='{}_{}'.format(name, num[name]))
                     num[name] += 1
                 else:
                     raise TypeError('undefined name for a network element: {}'.format(name))
+        print('we are done')
         return inputs

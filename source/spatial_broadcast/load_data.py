@@ -4,9 +4,15 @@ import matplotlib.pyplot as plt
 
 class DataPipeline(object):
     def __init__(self, image_path, training_params):
+        
+        '''
         with np.load(image_path) as data:
             images = data['imgs']
+        '''
 
+        # minor hacks for speedy loading
+        # changed from .npz to .npy with reduced size
+        images = np.load(image_path)
         images = np.expand_dims(images, axis=-1)
  
         # we only want to see that this spatial broadcast network
@@ -26,14 +32,21 @@ class DataPipeline(object):
         print(self.images.shape)
         print('end: complete shuffling...')
         
+        # hard-coded, not good
+        self.num_channel = 1
         self.batch_size = training_params['batch_size']
-        
+        self.color_method = training_params['color']
+
+        # simple function dict
+
+        self.func = {'hsv': self._hsv}
+
         with tf.name_scope('pipeline'):
             self._build_dataset()
 
     # we will use HSV to add colors
     # assuming image is [h, w, 1]
-    def _add_colors(self, image):
+    def _hsv(self, image):
         h = tf.random.uniform(shape=(), 
                               minval=0.0, 
                               maxval=1.0,
@@ -57,7 +70,10 @@ class DataPipeline(object):
         self.feat_ph = tf.placeholder(self.images.dtype, self.images.shape)
         dataset = tf.data.Dataset.from_tensor_slices(self.feat_ph)
         dataset = dataset.shuffle(self.images.shape[0] // 100)
-        dataset = dataset.map(self._add_colors, num_parallel_calls=1)
+        if self.color_method:
+            dataset = dataset.map(self.func[self.color_method], 
+                                  num_parallel_calls=4)
+            self.num_channel = 3
         dataset = dataset.batch(batch_size=self.batch_size)
         dataset = dataset.prefetch(buffer_size=1)
         iterator = dataset.make_initializable_iterator()
