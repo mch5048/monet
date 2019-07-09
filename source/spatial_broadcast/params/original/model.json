@@ -45,5 +45,7 @@
                 "units": "latent_dim"
             }
         }
-    ]
+    ],
+
+    "latent_dim": 10
 }

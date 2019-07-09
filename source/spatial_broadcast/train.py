@@ -5,25 +5,23 @@ from build_graph import VAE
 from load_data import DataPipeline
 
 def train(network_specs,
-          image_size,
-          latent_dim,
           training_params,
-          image_path):
+          image_path,
+          save_path):
     
     # create images DataPipeline
-    images = DataPipeline(image_path,
-                          training_params)
+    datapipe = DataPipeline(image_path,
+                            training_params)
 
     # create model VAE
     model = VAE(network_specs,
-                sampler,
-                images,
-                latent_size,
-                training_params)
+                datapipe
+                training_params,
+                save_path)
 
     # train the model
-    model.train()
-
+    # save_config is flexible
+    model.train(save_path=save_path)
 
 if __name__ == '__main__':
     network_specs_json = 'source/spatial_broadcast/params/original/model.json'
@@ -35,14 +33,13 @@ if __name__ == '__main__':
     with open(training_params_json, 'r') as f:
         training_params = json.load(f)
 
-    image_size = [64, 64, 3]
-    latent_dim = 10
-
     # load data
     image_folder = 'data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
-  
+
+    # save config
+    save_folder = 'source/spatial_broadcast/tmp/'
+
     train(network_specs=network_specs,
-          image_size=image_size,
-          latent_dim=latent_dim,
           training_params=training_params,
-          image_path=image_path)
+          image_path=image_path,
+          save_folder=save_folder)

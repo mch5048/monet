@@ -13,14 +13,15 @@ class Load(object):
         self.inputs = inputs
         self._build_dataset()
 
+    def s(self, item):
+        return item + 30
+        
     def _build_dataset(self):
         self.x_ph = tf.placeholder(self.inputs.dtype, self.inputs.shape)
         dataset = tf.data.Dataset.from_tensor_slices(self.x_ph)
         dataset = dataset.shuffle(buffer_size=15)
         # dataset = dataset.repeat(count=2)
-        def s(item):
-            return item + 30
-        dataset = dataset.map(s, num_parallel_calls=8)
+        dataset = dataset.map(self.s, num_parallel_calls=8)
         dataset = dataset.batch(batch_size=5)
         dataset = dataset.prefetch(buffer_size=5)
         iterator = dataset.make_initializable_iterator()

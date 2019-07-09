@@ -6,16 +6,24 @@ class DataPipeline(object):
     def __init__(self, image_path, training_params):
         with np.load(image_path) as data:
             images = data['imgs']
+
         images = np.expand_dims(images, axis=-1)
+ 
+        # we only want to see that this spatial broadcast network
+        # works
 
         # tf.cast() ???
         images = images.astype(np.float32)
         # complete shuffle
-        idx = images.shape[0]
-
+        idx = np.arange(images.shape[0])
+        
         print('begin: complete shuffling...')
         np.random.shuffle(idx)
-        self.images = images[idx]
+        images = images[idx]
+
+        load = int(training_params['load'])
+        self.images = images[0:load]
+        print(self.images.shape)
         print('end: complete shuffling...')
         
         self.batch_size = training_params['batch_size']
@@ -25,7 +33,7 @@ class DataPipeline(object):
 
     # we will use HSV to add colors
     # assuming image is [h, w, 1]
-    def _add_colors(image):
+    def _add_colors(self, image):
         h = tf.random.uniform(shape=(), 
                               minval=0.0, 
                               maxval=1.0,
@@ -48,8 +56,10 @@ class DataPipeline(object):
     def _build_dataset(self):
         self.feat_ph = tf.placeholder(self.images.dtype, self.images.shape)
         dataset = tf.data.Dataset.from_tensor_slices(self.feat_ph)
-        dataset = dataset.shuffle(self.images.shape // 100)
-        dataset = dataset.map(self._add_colors, num_parallel_calls=8)
+        dataset = dataset.shuffle(self.images.shape[0] // 100)
+        dataset = dataset.map(self._add_colors, num_parallel_calls=1)
+        dataset = dataset.batch(batch_size=self.batch_size)
+        dataset = dataset.prefetch(buffer_size=1)
         iterator = dataset.make_initializable_iterator()
         self.initializer = iterator.initializer
         self.next_element = iterator.get_next()
