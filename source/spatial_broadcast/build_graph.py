@@ -37,7 +37,6 @@ class VAE(object):
                 self._build_loss()
                 self._build_optimizer()
             self.vars_initializer = tf.global_variables_initializer()
-            # we should change this to saver, because in this we can continue to train a model
 
         if mode == 'evaluating':
             with tf.variable_scope(scope):

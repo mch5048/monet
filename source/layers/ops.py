@@ -86,19 +86,20 @@ def conv2d_transpose(inputs,
                               name='activation')
         return conv
 
-
-
-
 def max_pooling2d(inputs,
                   pool_size,
                   strides,
                   padding='VALID',
                   name='max_pooling2d'):
-    return tf.nn.max_pool(value=inputs,
-                          ksize=[1, pool_size, pool_size, 1],
-                          strides=[1, strides, strides, 1],
-                          padding=padding,
-                          name='max_pooling2d_')
+    with tf.name_scope(name):
+        max_pool = tf.nn.max_pool(value=inputs,
+                                  ksize=[1, pool_size, pool_size, 1],
+                                  strides=[1, strides, strides, 1],
+                                  padding=padding,
+                                  name='max_pooling2d_')
+
+    print('max_pool', max_pool.get_shape())
+    return max_pool
 
 def dropout(inputs, 
             rate=0.5, 
