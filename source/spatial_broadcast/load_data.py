@@ -5,19 +5,16 @@ import matplotlib.pyplot as plt
 class DataPipeline(object):
     def __init__(self, image_path, training_params):
         
-        '''
-        with np.load(image_path) as data:
-            images = data['imgs']
-        '''
-
-        # minor hacks for speedy loading
-        # changed from .npz to .npy with reduced size
-        images = np.load(image_path)
+        try:
+            with np.load(image_path) as data:
+                images = data['imgs']
+        except:
+            # minor hacks for speedy loading
+            # changed from .npz to .npy with reduced size
+            images = np.load(image_path)
+        
         print(images.shape)
         images = np.expand_dims(images, axis=-1)
- 
-        # we only want to see that this spatial broadcast network
-        # works
 
         # tf.cast() ???
         images = images.astype(np.float32)
@@ -39,11 +36,16 @@ class DataPipeline(object):
         self.color_method = training_params['color']
 
         # simple function dict
-
         self.func = {'hsv': self._hsv}
 
         with tf.name_scope('pipeline'):
             self._build_dataset()
+
+        # params.json must contain either iterations or epochs
+        try:
+            self.n_run = int(training_params['iterations'])
+        except KeyError:
+            self.n_run = int(training_params['epochs']) * (self.images.shape[0] // self.batch_size)
 
     # we will use HSV to add colors
     # assuming image is [h, w, 1]

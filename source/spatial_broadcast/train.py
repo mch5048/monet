@@ -11,7 +11,8 @@ IN THE FUTURE: remove all the unnecessary print statements
 def train(network_specs,
           training_params,
           image_path,
-          save_path):
+          save_path,
+          ckpt_path):
     
     print('creating datapipe...')
     # create images DataPipeline
@@ -31,7 +32,8 @@ def train(network_specs,
  HERE WE GO
 =============
 ''')
-    model.train(save_path=save_path)
+    model.train(save_path=save_path,
+                ckpt_path=ckpt_path)
 
 if __name__ == '__main__':
     network_specs_json = 'source/spatial_broadcast/params/original/model.json'
@@ -40,18 +42,21 @@ if __name__ == '__main__':
     with open(network_specs_json, 'r') as f:
         network_specs = json.load(f)
 
-
     with open(training_params_json, 'r') as f:
         training_params = json.load(f)
 
     # load data
-    # image_path = 'data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
-    image_path = 'data/reduced.npy'
+    image_path = 'data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
+    # image_path = 'data/reduced.npy'
 
-    # save config
+    # save path
     save_path = 'source/spatial_broadcast/tmp/'
+
+    # ckpt path to continue training
+    ckpt_path = None
 
     train(network_specs=network_specs,
           training_params=training_params,
           image_path=image_path,
-          save_path=save_path)
+          save_path=save_path,
+          ckpt_path=ckpt_path)

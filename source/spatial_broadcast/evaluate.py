@@ -47,7 +47,7 @@ if __name__ == '__main__':
         network_specs = json.load(f)
 
     # ckpt path
-    ckpt_path = 'source/spatial_broadcast/tmp/decoder_final.ckpt'
+    ckpt_path = 'source/spatial_broadcast/tmp/final.ckpt'
 
     evaluate(network_specs=network_specs,
              ckpt_path=ckpt_path)

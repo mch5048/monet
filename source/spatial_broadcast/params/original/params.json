@@ -2,6 +2,6 @@
     "lr" : 3e-4,
     "batch_size": 16,
     "iterations": 1.5e5,
-    "load": 5e4,
+    "load": 2e5,
     "color": "hsv"
 }
