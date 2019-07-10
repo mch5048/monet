@@ -1,4 +1,5 @@
 import os
+import copy
 
 import numpy as np
 import tensorflow as tf
@@ -17,6 +18,7 @@ class VAE(object):
         # network specs
         self.network_specs = network_specs
         self.latent_dim = network_specs['latent_dim']
+        self.num_channel = 3
 
         if mode == 'training':
 
@@ -24,8 +26,7 @@ class VAE(object):
             self.datapipe = datapipe
             self.inputs = datapipe.images
             self.input_shape = list(self.inputs.shape[1:])
-            self.num_channel = 3
-
+            
             # training_params has all the training parameters
             self.lr = training_params['lr']
             
@@ -40,20 +41,13 @@ class VAE(object):
                 self._build_loss()
                 self._build_optimizer()
             self.vars_initializer = tf.global_variables_initializer()
-            self.saver = tf.train.Saver()
-
+            self.encoder_saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='{}/encoder'.format(scope)))
+ 
         if mode == 'evaluating':
             with tf.variable_scope(scope):
                 self._build_decoder()
-                self.saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope))
 
-    '''
-    # this placeholder structure WILL BE CHANGED
-    # we need to build an input/output pipeline
-    def _build_placeholders(self):
-        # self.input_ph = tf.placeholder(dtype=tf.float32, shape=[None] + self.input_shape, name='input_ph')
-        self.latent_ph = tf.placeholder(dtype=tf.float32, shape=[None, self.latent_size], name='latent_size')
-    '''
+        self.decoder_saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='{}/decoder'.format(scope)))
 
     def _build_graph(self):
         encoder = build_network(inputs=self.datapipe.next_element,
@@ -106,23 +100,28 @@ class VAE(object):
                     print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))
                     
                     if not(n_epoch % 10):
-                        save_name = 'inter_{}.ckpt'.format(n_epoch)
-                        inter_path = os.path.join(save_path, save_name)
-                        self.saver.save(sess, inter_path)
-                        print('inter model is saved to: {}'.format(inter_path))
+                        encoder_name = 'encoder_{}.ckpt'.format(n_epoch)
+                        encoder_path = os.path.join(save_path, encoder_name)
+                        decoder_name = 'decoder_{}.ckpt'.format(n_epoch)
+                        decoder_path = os.path.join(save_path, decoder_name)
+                        self.encoder_saver.save(sess, encoder_path)
+                        self.decoder_saver.save(sess, decoder_path)
+                        print('inter models are saved to: {}, {}'.format(encoder_path, decoder_path))
 
                     # reset ops
                     n_epoch += 1
                     epoch_loss = []
 
-            # final save
-            save_name = 'final.ckpt'
-            final_path = os.path.join(save_path, save_name)
-            self.saver.save(sess, final_path)
-            print('final model is saved to: {}'.format(final_path))
+            encoder_name = 'encoder_final.ckpt'
+            encoder_path = os.path.join(save_path, encoder_name)
+            decoder_name = 'decoder_final.ckpt'
+            decoder_path = os.path.join(save_path, decoder_name)
+            self.encoder_saver.save(sess, encoder_path)
+            self.decoder_saver.save(sess, decoder_path)
+            print('final models are saved to: {}, {}'.format(encoder_path, decoder_path))
 
     def _build_decoder(self):
-        self.latent_ph = tf.placeholder(dtype=tf.float32, shape=[None, self.latent_size], name='latent_size')
+        self.latent_ph = tf.placeholder(dtype=tf.float32, shape=[None, self.latent_dim], name='latent_dim')
         self.logits = build_network(inputs=self.latent_ph,
                                     model_specs=self.network_specs['decoder'],
                                     num_channel=self.num_channel,
@@ -130,7 +129,7 @@ class VAE(object):
         self.preds = tf.nn.sigmoid(self.logits)
 
     # evaluating disentanglement
-    def evaluate(self, ckpt_path, linspace):
+    def evaluate(self, ckpt_path, linspace, latent_play):
         # config for session    
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.49,
                                     allow_growth=True)
@@ -142,14 +141,16 @@ class VAE(object):
 
         with tf.Session(config=config) as sess:
             # init ops
-            sess.run(self.saver.restore(ckpt_path))
+            print('restoring...')
+            self.decoder_saver.restore(sess, ckpt_path)
+            print('restored')
 
             latent = np.random.normal(size=[1, self.latent_dim])
             
             # crude solution, i will fix this later
             d_latent = []
             print('creating disentangled pertubrations...')
-            for i in range(latent.shape[1]):
+            for i in range(latent_play):
                 for j in np.nditer(linspace):
                     tmp = copy.copy(latent)
                     tmp[0, i] += j
