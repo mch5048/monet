@@ -13,6 +13,11 @@ def cross_entropy(logits, labels):
     ce = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels)
     return tf.reduce_mean(tf.reduce_sum(ce, axis=1))
 
+# compute mse
+def mse(preds, labels):
+    se = tf.reduce_sum(tf.square(preds - labels), axis=[1, 2, 3])
+    return tf.reduce_mean(se)
+
 # sampling from normal distribution
 def sampler_normal(mu, logvar):
     return tf.random.normal(shape=tf.shape(logvar)) * tf.exp(logvar * 0.5) + mu

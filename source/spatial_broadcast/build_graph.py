@@ -29,6 +29,7 @@ class VAE(object):
             
             # training_params has all the training parameters
             self.lr = training_params['lr']
+            self.loss = training_params['loss']
             self.n_run = datapipe.n_run
 
             with tf.variable_scope(scope):
@@ -75,9 +76,15 @@ class VAE(object):
         self.preds = tf.nn.sigmoid(self.logits)
 
     def _build_loss(self):
-        ce_loss = misc.cross_entropy(logits=self.logits, labels=self.datapipe.next_element)
+        if self.loss == 'cross_entropy':
+            rec_loss = misc.cross_entropy(logits=self.logits, labels=self.datapipe.next_element)
+        elif self.loss == 'mse':
+            rec_loss = misc.mse(preds=preds, labels=self.datapipe.next_element)
+        else:
+            raise NotImplementError('loss: {} is not implemented.'.format(self.loss))
+
         kl_loss = misc.kl_divergence(mu=self.mu, logvar=self.logvar)
-        self.loss = ce_loss + kl_loss
+        self.loss = rec_loss + kl_loss
 
     def _build_optimizer(self):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
