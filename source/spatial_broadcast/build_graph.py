@@ -90,7 +90,7 @@ class VAE(object):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
-    def train(self, save_path):
+    def train(self, save_path, ckpt_path=None):
         with tf.Session(config=self.config) as sess:
             # init ops
             if ckpt_path:
