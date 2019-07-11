@@ -92,6 +92,7 @@ class UNet(object):
                                            filters=64*16,
                                            name='block1')
 
+            
 
 
             # upsampling path

@@ -177,3 +177,20 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
                          name='map_concat')
         print(z_sb.get_shape())
     return z_sb
+
+# we will be using transposed convolution weights with 'same' padding
+# cheap and faster solution for nearest neighbors upsampling
+def upsampling_2d(inputs,
+                  factor,
+                  method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+                  name='upsampling_2d'):
+    # i should just use tf.image.resize_images with NEAREST_NEIGHBORS
+    with tf.name_scope(name):
+        input_shape = inputs.get_shape()
+        H, W = input_shape[1] * factor, input_shape[2] * factor
+        images = tf.image.resize_images(images=inputs,
+                                        size=[H, W],
+                                        method=method,
+                                        align_corners=True,
+                                        preserve_aspect_ratio=False)
+    return images
