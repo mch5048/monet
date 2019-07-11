@@ -194,3 +194,33 @@ def upsampling_2d(inputs,
                                         align_corners=True,
                                         preserve_aspect_ratio=False)
     return images
+
+def crop_to_fit(down_input, 
+                up_input,
+                name='crop_to_fit'):
+    with tf.name_scope(name):
+        # get shapes
+        down_shape = down_input.get_shape()
+        up_shape = up_input.get_shape()
+
+        print(down_shape, up_shape)
+
+        down_H, down_W = down_shape[1], down_shape[2]
+        up_H, up_W = up_shape[1], up_shape[2]
+
+        # extract the center (the reason for subtracting 1)
+        d_H = down_H - up_H - 1
+        print('d_H in this level is: {}'.format(d_H + 1))
+
+        d_W = down_W - up_W - 1
+        print('d_W in this level is: {}'.format(d_W + 1))
+
+        down_input = down_input[:, d_H:(d_H + up_H), d_W:(d_W + up_W), :]
+        print('down_input cropped shape: ', down_input.get_shape())
+        print(np.squeeze(down_input))
+        print('up_input shape: ', up_input.get_shape())
+
+        concat = tf.concat([down_input, up_input], axis=-1)
+        print('concat shape: ', concat.get_shape())
+
+    return concat
