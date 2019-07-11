@@ -49,21 +49,22 @@ class UNet(object):
         def _block_down(self,
                         inputs, 
                         filters,
+                        padding,
                         name):
             with tf.variable_scope(name):
                 # downsampling path
-                out = layers.conv2d(inputs=self.datapipe.next_element,
-                                    filters=64,
+                out = layers.conv2d(inputs=inputs,
+                                    filters=filters,
                                     kernel_size=3,
                                     stride_size=1,
-                                    padding='VALID',
+                                    padding=padding,
                                     activation=tf.nn.relu,
                                     name='conv1')
-                out = layers.conv2d(inputs=out1,
-                                    filters=64,
+                out = layers.conv2d(inputs=out,
+                                    filters=filters,
                                     kernel_size=3,
                                     stride_size=1,
-                                    padding='VALID',
+                                    padding=padding,
                                     activation=tf.nn.relu,
                                     name='conv2')
                 maxp = layers.max_pooling2d(inputs=out1,
@@ -72,27 +73,58 @@ class UNet(object):
                                             padding='VALID')
             return out, maxp
 
+        def _block_up(down_inputs,
+                      up_inputs,
+                      filters,
+                      padding,
+                      name):
+            with tf.variable_scope(name):
+                # upsample first
+                out = layers.upsampling_2d(inputs=up_inputs,
+                                           factors=[2, 2])
+                out = layers.crop_to_fit(down_input=down_inputs,
+                                         up_inputs=out)
+                out = layers.conv2d(inputs=out,
+                                    filters=filters,
+                                    kernel_size=3,
+                                    stride_size=1,
+                                    padding=padding,
+                                    activation=tf.nn.relu,
+                                    name='conv1')
+                out = layers.conv2d(inputs=out,
+                                    filters=filters,
+                                    kernel_size=3,
+                                    stride_size=1,
+                                    padding=padding,
+                                    activation=tf.nn.relu,
+                                    name='conv2')
+            return out
+
         # FIRST: let's build this crude
+        # changed padding from 'VALID' to 'SAME' to obtain the same output shape
+        # we will be testing unet segmentation on dspirites
         # THEN: we will factorize using .json
         def _build_graph(self):
             # downsampling path
-            out1, maxp1 = self._block_down(inputs=self.datapipe.next_element,
-                                           filters=64,
-                                           name='block1')
-            out2, maxp2 = self._block_down(inputs=self.datapipe.next_element,
-                                           filters=64*2,
-                                           name='block1')
-            out3, maxp3 = self._block_down(inputs=self.datapipe.next_element,
-                                           filters=64*4,
-                                           name='block1')
-            out4, maxp4 = self._block_down(inputs=self.datapipe.next_element,
-                                           filters=64*8,
-                                           name='block1')
-            out5, maxp5 = self._block_down(inputs=self.datapipe.next_element,
-                                           filters=64*16,
-                                           name='block1')
+            down_out1, maxp1 = self._block_down(inputs=self.datapipe.next_element,
+                                                filters=64,
+                                                name='down_block1')
+            down_out2, maxp2 = self._block_down(inputs=maxp1,
+                                                filters=64*2,
+                                                name='down_block2')
+            down_out3, maxp3 = self._block_down(inputs=maxp2,
+                                                filters=64*4,
+                                                name='down_block3')
+            down_out4, maxp4 = self._block_down(inputs=maxp3,
+                                                filters=64*8,
+                                                name='down_block4')
+            down_out5, maxp5 = self._block_down(inputs=maxp4,
+                                                filters=64*16,
+                                                name='down_block5')
+            up_out1
 
-            
+
+
 
 
             # upsampling path

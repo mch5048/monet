@@ -181,13 +181,13 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
 # we will be using transposed convolution weights with 'same' padding
 # cheap and faster solution for nearest neighbors upsampling
 def upsampling_2d(inputs,
-                  factor,
+                  factors,
                   method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
                   name='upsampling_2d'):
     # i should just use tf.image.resize_images with NEAREST_NEIGHBORS
     with tf.name_scope(name):
         input_shape = inputs.get_shape()
-        H, W = input_shape[1] * factor, input_shape[2] * factor
+        H, W = input_shape[1] * factors[1], input_shape[2] * factors[2]
         images = tf.image.resize_images(images=inputs,
                                         size=[H, W],
                                         method=method,
@@ -195,13 +195,13 @@ def upsampling_2d(inputs,
                                         preserve_aspect_ratio=False)
     return images
 
-def crop_to_fit(down_input, 
-                up_input,
+def crop_to_fit(down_inputs, 
+                up_inputs,
                 name='crop_to_fit'):
     with tf.name_scope(name):
         # get shapes
-        down_shape = down_input.get_shape()
-        up_shape = up_input.get_shape()
+        down_shape = down_inputs.get_shape()
+        up_shape = up_inputs.get_shape()
 
         print(down_shape, up_shape)
 
@@ -215,12 +215,10 @@ def crop_to_fit(down_input,
         d_W = down_W - up_W - 1
         print('d_W in this level is: {}'.format(d_W + 1))
 
-        down_input = down_input[:, d_H:(d_H + up_H), d_W:(d_W + up_W), :]
-        print('down_input cropped shape: ', down_input.get_shape())
-        print(np.squeeze(down_input))
-        print('up_input shape: ', up_input.get_shape())
+        down_inputs = down_inputs[:, d_H:(d_H + up_H), d_W:(d_W + up_W), :]
+        print('down_input cropped shape: ', down_inputs.get_shape())
+        print('up_input shape: ', up_inputs.get_shape())
 
-        concat = tf.concat([down_input, up_input], axis=-1)
+        concat = tf.concat([down_inputs, up_inputs], axis=-1)
         print('concat shape: ', concat.get_shape())
-
     return concat
