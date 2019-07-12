@@ -7,3 +7,4 @@ data/
 # ignore tmp
 source/spatial_broadcast/tmp
 source/unet/tmp
+source/unet/3class

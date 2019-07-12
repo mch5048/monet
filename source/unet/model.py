@@ -18,7 +18,7 @@ class UNet(object):
         self.network_specs = network_specs
 
         # hard-coded for now, change it LATER
-        self.num_classes = 2
+        self.num_classes = 3
 
         # datapipe
         self.datapipe = datapipe
@@ -249,5 +249,5 @@ class UNet(object):
                      feed_dict={self.datapipe.images_ph: self.inputs,
                                 self.datapipe.labels_ph: self.labels})
 
-            in_labels, preds = sess.run([self.next_labels, self.preds])
-        return in_labels, preds
+            in_images, in_labels, preds = sess.run([self.next_images, self.next_labels, self.preds])
+        return in_images, in_labels, preds

@@ -1,6 +1,7 @@
 import os
 import json
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from model import UNet
@@ -37,15 +38,18 @@ def train(network_specs,
  HERE WE GO
 =============
 ''')
-    labels, preds = model.evaluate(ckpt_path=ckpt_path)
+    images, labels, preds = model.evaluate(ckpt_path=ckpt_path)
 
     for i in range(labels.shape[0]):
         # plt.subplots(figsize=[16,12])
-        for j in range(2):
-            plt.subplot(1, 4, 2*j+1)
+        for j in range(3):
+            plt.subplot(2, 6, 2*j+1)
             plt.imshow(labels[i, :, :, j])
-            plt.subplot(1, 4, 2*j+2)
+            plt.subplot(2, 6, 2*j+2)
             plt.imshow(preds[i, :, :, j])
+
+        plt.subplot(2, 6, 7)
+        plt.imshow(np.squeeze(images[i]))
         plt.show()
 
 if __name__ == '__main__':
@@ -59,14 +63,14 @@ if __name__ == '__main__':
         training_params = json.load(f)
 
     # load data
-    image_path = 'data/multi_dsprites_semantic_64x64_validation.npz'
+    image_path = 'data/multi_dsprites_semantic_64x64_validation_3c_diff.npz'
     # image_path = 'data/reduced.npy'
 
     # save_path
     save_path = None
 
     # ckpt path to continue training
-    ckpt_path = 'source/unet/tmp/epoch_20.ckpt'
+    ckpt_path = 'source/unet/3class/epoch_20.ckpt'
 
     train(network_specs=network_specs,
           training_params=training_params,
