@@ -5,7 +5,8 @@ def kl_divergence(mu, logvar):
     kl = 0.5 * (tf.exp(logvar) + tf.square(mu) - logvar - 1.0)
     return tf.reduce_mean(tf.reduce_sum(kl, axis=1))
 
-# compute binary cross entropy
+# compute cross entropy, this also works for multilabel images
+# because we are flattening logits and labels
 def cross_entropy(logits, labels):
     batch_size = tf.shape(logits)[0]
     logits = tf.reshape(logits, shape=[batch_size, -1])
