@@ -1,9 +1,10 @@
 import os
 import json
 import tensorflow as tf
-from network import build_network
-from build_graph import VAE
+from model import UNet
 from load_data import DataPipeline
+
+import sys
 
 '''
 IN THE FUTURE: remove all the unnecessary print statements
@@ -20,11 +21,12 @@ def train(network_specs,
     datapipe = DataPipeline(image_path=image_path,
                             training_params=training_params)
 
+    sys.exit()
     print('creating network model...')
     # create model VAE
-    model = VAE(network_specs=network_specs,
-                datapipe=datapipe,
-                training_params=training_params)
+    model = UNet(network_specs=network_specs,
+                 datapipe=datapipe,
+                 training_params=training_params)
 
     # train the model
     # save_config is flexible
@@ -47,7 +49,7 @@ if __name__ == '__main__':
         training_params = json.load(f)
 
     # load data
-    image_path = 'data/multi_dsprites_semantic_64x64.npy'
+    image_path = 'data/multi_dsprites_semantic_64x64.npz'
     # image_path = 'data/reduced.npy'
 
     # save path

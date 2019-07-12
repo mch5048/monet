@@ -31,7 +31,7 @@ squares = images[0:elems]
 ellipses = images[elems:2*elems]
 
 # number of examples to create
-N = 3e5
+N = 1e5
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
@@ -68,6 +68,8 @@ for i in range(N_mixed):
 
 images, labels = np.array(images), np.array(labels)
 
+images = images.astype(np.float32)
+labels = labels.astype(np.float32)
 print(images.shape, labels.shape)
 
 plt.subplot(311)
@@ -79,4 +81,4 @@ plt.imshow(labels[20, :, :, 1], cmap='gray')
 plt.show()
 
 print('saving...')
-np.savez('data/multi_dsprites_semantic_64x64.npy', imgs='images', labels='labels')
+np.savez_compressed('data/multi_dsprites_semantic_64x64.npz', imgs=images, labels=labels)

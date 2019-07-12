@@ -11,7 +11,9 @@ class DataPipeline(object):
                 images = data['imgs']
                 labels = data['labels']
         except:
-            raise NotImplementedError('you must load .npz')
+            data = np.load(image_path)
+            images = data['imgs']
+            labels = data['labels']
 
         print(images.shape)
         images = np.expand_dims(images, axis=-1)
