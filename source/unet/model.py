@@ -1,12 +1,17 @@
+import os
+
+import numpy as np
 import tensorflow as tf
+
 from source import layers
+from source import misc
 
 class UNet(object):
     def __init__(self,
-                 network_spec,
+                 network_specs,
+                 datapipe,
                  scope='unet',
                  mode='training',
-                 datapipe=None,
                  training_params=None):
 
         # network specs
@@ -15,17 +20,17 @@ class UNet(object):
         # hard-coded for now, change it LATER
         self.num_classes = 2
 
-        # training mode must supply datapipe and training_params
+        # datapipe
+        self.datapipe = datapipe
+
+        # inputs and images are kind of confusing to use at the same time
+        # might need to change to a unified name
+        self.inputs = datapipe.images
+        self.input_shape = list(self.inputs.shape[1:])
+        self.labels = datapipe.labels
+
+        # training mode must supply training_params
         if mode == 'training':
-            # datapipe
-            self.datapipe = datapipe
-
-            # inputs and images are kind of confusing to use at the same time
-            # might need to change to a unified name
-            self.inputs = datapipe.images
-            self.input_shape = list(self.inputs.shape[1:])
-            self.labels = datapipe.labels
-
             # training_params has all the training parameters
             self.lr = training_params['lr']
             self.loss = training_params['loss']
@@ -38,8 +43,8 @@ class UNet(object):
             self.vars_initializer = tf.global_variables_initializer()
 
         if mode == 'evaluating':
-            # TODO
-            pass
+            with tf.variable_scope(scope):
+                self._build_graph()
 
         # saver
         self.saver = tf.train.Saver()
@@ -53,126 +58,131 @@ class UNet(object):
                                      intra_op_parallelism_threads=4,
                                      allow_soft_placement=True)
 
-        def _block_down(self,
-                        inputs, 
-                        filters,
-                        padding,
-                        name):
-            with tf.variable_scope(name):
-                # downsampling path
-                out = layers.conv2d(inputs=inputs,
-                                    filters=filters,
-                                    kernel_size=3,
-                                    stride_size=1,
-                                    padding=padding,
-                                    activation=tf.nn.relu,
-                                    name='conv1')
-                out = layers.conv2d(inputs=out,
-                                    filters=filters,
-                                    kernel_size=3,
-                                    stride_size=1,
-                                    padding=padding,
-                                    activation=tf.nn.relu,
-                                    name='conv2')
-                maxp = layers.max_pooling2d(inputs=out1,
-                                            pool_size=2,
-                                            strides=2,
-                                            padding='VALID')
-            return out, maxp
-
-        def _block_up(down_inputs,
-                      up_inputs,
-                      filters,
-                      padding,
-                      name):
-            with tf.variable_scope(name):
-                # upsample first
-                out = layers.upsampling_2d(inputs=up_inputs,
-                                           factors=[2, 2])
-                out = layers.crop_to_fit(down_input=down_inputs,
-                                         up_inputs=out)
-                out = layers.conv2d(inputs=out,
-                                    filters=filters,
-                                    kernel_size=3,
-                                    stride_size=1,
-                                    padding=padding,
-                                    activation=tf.nn.relu,
-                                    name='conv1')
-                out = layers.conv2d(inputs=out,
-                                    filters=filters,
-                                    kernel_size=3,
-                                    stride_size=1,
-                                    padding=padding,
-                                    activation=tf.nn.relu,
-                                    name='conv2')
-            return out
-
-        # FIRST: let's build this crude
-        # changed padding from 'VALID' to 'SAME' to obtain the same output shape
-        # we will be testing unet segmentation on dspirites
-        # THEN: we will factorize using .json
-        def _build_graph(self):
+    # THIS FUNCTIONS WILL BE REMOVED
+    # _block_down and _block_up
+    def _block_down(self,
+                    inputs, 
+                    filters,
+                    padding,
+                    name):
+        with tf.variable_scope(name):
             # downsampling path
-            init_filter = 16
-            down_out1, maxp1 = self._block_down(inputs=self.datapipe.next_images,
-                                                filters=init_filter,
-                                                padding='SAME',
-                                                name='down_block1')
-            down_out2, maxp2 = self._block_down(inputs=maxp1,
-                                                filters=init_filter*2,
-                                                padding='SAME',
-                                                name='down_block2')
-            down_out3, maxp3 = self._block_down(inputs=maxp2,
-                                                filters=init_filter*4,
-                                                padding='SAME',
-                                                name='down_block3')
-            down_out4, maxp4 = self._block_down(inputs=maxp3,
-                                                filters=init_filter*8,
-                                                padding='SAME',
-                                                name='down_block4')
-            down_out5, maxp5 = self._block_down(inputs=maxp4,
-                                                filters=init_filter*16,
-                                                padding='SAME',
-                                                name='down_block5')
-            # upsampling path
-            up_out4 = self._block_up(down_inputs=down_out4,
-                                     up_inputs=down_out5,
-                                     filters=init_filter*8,
-                                     padding='SAME',
-                                     name='up_block4')
-            up_out3 = self._block_up(down_inputs=down_out3,
-                                     up_inputs=up_out4,
-                                     filters=init_filter*4,
-                                     padding='SAME',
-                                     name='up_block3')
-            up_out2 = self._block_up(down_inputs=down_out2,
-                                     up_inputs=up_out3,
-                                     filters=init_filter*2,
-                                     padding='SAME',
-                                     name='up_block2')
-            up_out1 = self._block_up(down_inputs=down_out1,
-                                     up_inputs=up_out2,
-                                     filters=init_filter,
-                                     padding='SAME',
-                                     name='up_block1')
+            out = layers.conv2d(inputs=inputs,
+                                filters=filters,
+                                kernel_size=3,
+                                stride_size=1,
+                                padding=padding,
+                                activation=tf.nn.relu,
+                                name='conv1')
+            out = layers.conv2d(inputs=out,
+                                filters=filters,
+                                kernel_size=3,
+                                stride_size=1,
+                                padding=padding,
+                                activation=tf.nn.relu,
+                                name='conv2')
+            maxp = layers.max_pooling2d(inputs=out,
+                                        pool_size=2,
+                                        strides=2,
+                                        padding='VALID')
+        return out, maxp
 
-            # final layers
-            ## TODO
-            self.logits = layers.conv2d(inputs=up_out1,
-                                        filters=self.num_classes,
-                                        kernel_size=1,
-                                        stride_size=1,
-                                        padding='SAME',
-                                        activation=None,
-                                        name='final_layer')
-            self.probs = tf.nn.sigmoid(self.logits)
+    def _block_up(self,
+                  down_inputs,
+                  up_inputs,
+                  filters,
+                  padding,
+                  name):
+        with tf.variable_scope(name):
+            # upsample first
+            out = layers.upsampling_2d(inputs=up_inputs,
+                                       factors=[2, 2])
+            out = layers.crop_to_fit(down_inputs=down_inputs,
+                                     up_inputs=out)
+            out = layers.conv2d(inputs=out,
+                                filters=filters,
+                                kernel_size=3,
+                                stride_size=1,
+                                padding=padding,
+                                activation=tf.nn.relu,
+                                name='conv1')
+            out = layers.conv2d(inputs=out,
+                                filters=filters,
+                                kernel_size=3,
+                                stride_size=1,
+                                padding=padding,
+                                activation=tf.nn.relu,
+                                name='conv2')
+        return out
+
+    # FIRST: let's build this crude
+    # changed padding from 'VALID' to 'SAME' to obtain the same output shape
+    # we will be testing unet segmentation on dspirites
+    # THEN: we will factorize using .json
+    def _build_graph(self):
+        # downsampling path
+        init_filter = 16
+        self.next_images = self.datapipe.next_images
+        down_out1, maxp1 = self._block_down(inputs=self.next_images,
+                                            filters=init_filter,
+                                            padding='SAME',
+                                            name='down_block1')
+        down_out2, maxp2 = self._block_down(inputs=maxp1,
+                                            filters=init_filter*2,
+                                            padding='SAME',
+                                            name='down_block2')
+        down_out3, maxp3 = self._block_down(inputs=maxp2,
+                                            filters=init_filter*4,
+                                            padding='SAME',
+                                            name='down_block3')
+        down_out4, maxp4 = self._block_down(inputs=maxp3,
+                                            filters=init_filter*8,
+                                            padding='SAME',
+                                            name='down_block4')
+        down_out5, maxp5 = self._block_down(inputs=maxp4,
+                                            filters=init_filter*16,
+                                            padding='SAME',
+                                            name='down_block5')
+        # upsampling path
+        up_out4 = self._block_up(down_inputs=down_out4,
+                                 up_inputs=down_out5,
+                                 filters=init_filter*8,
+                                 padding='SAME',
+                                 name='up_block4')
+        up_out3 = self._block_up(down_inputs=down_out3,
+                                 up_inputs=up_out4,
+                                 filters=init_filter*4,
+                                 padding='SAME',
+                                 name='up_block3')
+        up_out2 = self._block_up(down_inputs=down_out2,
+                                 up_inputs=up_out3,
+                                 filters=init_filter*2,
+                                 padding='SAME',
+                                 name='up_block2')
+        up_out1 = self._block_up(down_inputs=down_out1,
+                                 up_inputs=up_out2,
+                                 filters=init_filter,
+                                 padding='SAME',
+                                 name='up_block1')
+
+        # final layers
+        ## TODO
+        self.logits = layers.conv2d(inputs=up_out1,
+                                    filters=self.num_classes,
+                                    kernel_size=1,
+                                    stride_size=1,
+                                    padding='SAME',
+                                    activation=None,
+                                    name='final_layer')
+        self.preds = tf.nn.sigmoid(self.logits)
+        self.next_labels = self.datapipe.next_labels
 
     def _build_loss(self):
         # need to change labels to actual labels
         if self.loss == 'cross_entropy':
-            rec_loss = misc.cross_entropy(logits=self.logits, labels=self.datapipe.next_labels)
+            rec_loss = misc.cross_entropy(logits=self.logits, labels=self.next_labels)
         elif self.loss == 'mse':
-            rec_loss = misc.mse(preds=preds, labels=self.datapipe.next_labels)
+            rec_loss = misc.mse(preds=preds, labels=self.next_labels)
         else:
             raise NotImplementError('loss: {} is not implemented.'.format(self.loss))
         self.loss = rec_loss
@@ -210,7 +220,7 @@ class UNet(object):
 
                     print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))
                     
-                    if not(n_epoch % 20):
+                    if not(n_epoch % 5):
                         name = 'epoch_{}.ckpt'.format(n_epoch)
                         path = os.path.join(save_path, name)
                         self.saver.save(sess, path)
@@ -233,21 +243,11 @@ class UNet(object):
             print('restoring {}...'.format(ckpt_path))
             self.saver.restore(sess, ckpt_path)
             print('restored')
-
-            latent = np.random.normal(size=[1, self.latent_dim])
             
-            # crude solution, i will fix this later
-            d_latent = []
-            print('creating disentangled pertubrations...')
-            for i in range(latent_play):
-                for j in np.nditer(linspace):
-                    tmp = copy.copy(latent)
-                    tmp[0, i] += j
-                    d_latent.append(tmp)
-            d_latent = np.squeeze(np.array(d_latent))
-            print('done creating!!!')
+            # datapipe initializer
+            sess.run(self.datapipe.initializer, 
+                     feed_dict={self.datapipe.images_ph: self.inputs,
+                                self.datapipe.labels_ph: self.labels})
 
-            logits, preds = sess.run([self.logits, self.preds],
-                                     feed_dict={self.latent_ph: d_latent})
-
-        return logits, preds
+            in_labels, preds = sess.run([self.next_labels, self.preds])
+        return in_labels, preds

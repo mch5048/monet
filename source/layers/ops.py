@@ -187,7 +187,7 @@ def upsampling_2d(inputs,
     # i should just use tf.image.resize_images with NEAREST_NEIGHBORS
     with tf.name_scope(name):
         input_shape = inputs.get_shape()
-        H, W = input_shape[1] * factors[1], input_shape[2] * factors[2]
+        H, W = input_shape[1] * factors[0], input_shape[2] * factors[1]
         images = tf.image.resize_images(images=inputs,
                                         size=[H, W],
                                         method=method,
@@ -199,9 +199,9 @@ def crop_to_fit(down_inputs,
                 up_inputs,
                 name='crop_to_fit'):
     with tf.name_scope(name):
-        # get shapes
-        down_shape = down_inputs.get_shape()
-        up_shape = up_inputs.get_shape()
+        # get shapes as list (tensorflow does NOT allow Dimension() object to be less than 0)
+        down_shape = down_inputs.get_shape().as_list()
+        up_shape = up_inputs.get_shape().as_list()
 
         print(down_shape, up_shape)
 
@@ -209,11 +209,11 @@ def crop_to_fit(down_inputs,
         up_H, up_W = up_shape[1], up_shape[2]
 
         # extract the center (the reason for subtracting 1)
-        d_H = down_H - up_H - 1
-        print('d_H in this level is: {}'.format(d_H + 1))
+        d_H = max(down_H - up_H - 1, 0)
+        print('d_H in this level is: {}'.format(d_H))
 
-        d_W = down_W - up_W - 1
-        print('d_W in this level is: {}'.format(d_W + 1))
+        d_W = max(down_W - up_W - 1, 0)
+        print('d_W in this level is: {}'.format(d_W))
 
         down_inputs = down_inputs[:, d_H:(d_H + up_H), d_W:(d_W + up_W), :]
         print('down_input cropped shape: ', down_inputs.get_shape())
