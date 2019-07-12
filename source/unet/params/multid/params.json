@@ -1,0 +1,7 @@
+{
+    "lr" : 3e-4,
+    "batch_size": 16,
+    "epoch": 20,
+    "load": 1e5,
+    "loss": "cross_entropy"
+}
