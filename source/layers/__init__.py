@@ -1,4 +1,5 @@
 from ops import *
+from normalization import *
 
 __all__ = ['conv2d', 
            'max_pooling2d', 
@@ -9,3 +10,5 @@ __all__ = ['conv2d',
            'upsampling_2d',
            'crop_to_fit'
            ]
+
+__all__ = ['instance_normalization']

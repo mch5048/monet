@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np 
 
+from source.layers import normalization
+
 def conv2d(inputs, 
            filters, 
            kernel_size, 
@@ -9,6 +11,7 @@ def conv2d(inputs,
            kernel_initializer=tf.truncated_normal_initializer(stddev=0.01),
            bias_initializer=tf.constant_initializer(value=0.01),
            activation=None,
+           normalization=None,
            name='conv2d'):
     
     with tf.variable_scope(name):
@@ -33,6 +36,14 @@ def conv2d(inputs,
                               name='bias_')
         print('conv', conv.get_shape())
         print('activation', activation)
+        print('normalization', normalization)
+
+        if normalization == 'instance_normalization':
+            conv = normalization.instance_normalization(inputs=conv,
+                                                        name='instance_normalization')
+        else:
+            raise NotImplementedError('only instance_normalization is implemented')
+
         # only works for some activation functions
         # need to change this for general case
         if activation:
