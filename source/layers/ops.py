@@ -10,8 +10,8 @@ def conv2d(inputs,
            padding='SAME',
            kernel_initializer=tf.truncated_normal_initializer(stddev=0.01),
            bias_initializer=tf.constant_initializer(value=0.01),
-           activation=None,
            normalization=None,
+           activation=None,
            name='conv2d'):
     
     with tf.variable_scope(name):

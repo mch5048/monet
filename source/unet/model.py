@@ -72,6 +72,7 @@ class UNet(object):
                                 kernel_size=3,
                                 stride_size=1,
                                 padding=padding,
+                                normalization='instance_normalization',
                                 activation=tf.nn.relu,
                                 name='conv1')
             out = layers.conv2d(inputs=out,
@@ -79,6 +80,7 @@ class UNet(object):
                                 kernel_size=3,
                                 stride_size=1,
                                 padding=padding,
+                                normalization='instance_normalization',
                                 activation=tf.nn.relu,
                                 name='conv2')
             maxp = layers.max_pooling2d(inputs=out,
@@ -104,6 +106,7 @@ class UNet(object):
                                 kernel_size=3,
                                 stride_size=1,
                                 padding=padding,
+                                normalization='instance_normalization',
                                 activation=tf.nn.relu,
                                 name='conv1')
             out = layers.conv2d(inputs=out,
@@ -111,6 +114,7 @@ class UNet(object):
                                 kernel_size=3,
                                 stride_size=1,
                                 padding=padding,
+                                normalization='instance_normalization',
                                 activation=tf.nn.relu,
                                 name='conv2')
         return out
