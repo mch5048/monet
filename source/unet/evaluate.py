@@ -70,7 +70,12 @@ if __name__ == '__main__':
     save_path = None
 
     # ckpt path to continue training
-    ckpt_path = 'source/unet/3class/epoch_10.ckpt'
+
+    ####
+    # FINAL MODEL IS EPOCH 19
+    # messed up numbering when restarted training
+    ####
+    ckpt_path = 'source/unet/3class/epoch_19.ckpt'
 
     train(network_specs=network_specs,
           training_params=training_params,
