@@ -205,13 +205,19 @@ class UNet(object):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
-    def train(self, save_path, ckpt_path=None):
+    def global_vars(self):
+        global_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+        for g in global_vars:
+            print(g)
+
+    def train(self, save_path, epoch=0, ckpt_path=None):
         with tf.Session(config=self.config) as sess:
             # init ops
             if ckpt_path:
                 print('restoring {}...'.format(ckpt_path))
                 self.saver.restore(sess, ckpt_path)
                 print('restored')
+                self.n_run = epoch * (self.inputs.shape[0] // self.datapipe.batch_size)
             else:
                 sess.run(self.vars_initializer)
 
@@ -221,7 +227,7 @@ class UNet(object):
                                 self.datapipe.labels_ph: self.labels})
 
             # n_epoch, epoch loss just out of curiosity
-            n_epoch, epoch_loss = 1, []
+            n_epoch, epoch_loss = epoch + 1, []
             for i in range(self.n_run):
                 try:
                     l, _ = sess.run([self.loss, self.train_op])

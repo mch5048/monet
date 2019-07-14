@@ -14,7 +14,8 @@ def train(network_specs,
           training_params,
           image_path,
           save_path,
-          ckpt_path):
+          ckpt_path,
+          epoch=10):
     
     print('creating datapipe...')
     # create images DataPipeline
@@ -35,7 +36,8 @@ def train(network_specs,
 =============
 ''')
     model.train(save_path=save_path,
-                ckpt_path=ckpt_path)
+                ckpt_path=ckpt_path,
+                epoch=epoch)
 
 if __name__ == '__main__':
     network_specs_json = 'source/unet/params/multid/model.json'
@@ -57,10 +59,11 @@ if __name__ == '__main__':
         os.mkdir(save_path)
 
     # ckpt path to continue training
-    ckpt_path = None
+    ckpt_path = 'source/unet/3class/epoch_10.ckpt'
 
     train(network_specs=network_specs,
           training_params=training_params,
           image_path=image_path,
           save_path=save_path,
-          ckpt_path=ckpt_path)
+          ckpt_path=ckpt_path,
+          epoch=10)

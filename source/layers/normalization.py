@@ -43,10 +43,12 @@ class InstanceNormalization(object):
             self.gamma = tf.get_variable(dtype=dtype,
                                          shape=params_shape,
                                          initializer=tf.ones_initializer(),
+                                         trainable=True,
                                          name='gamma') 
             self.beta = tf.get_variable(dtype=dtype,
                                         shape=params_shape,
                                         initializer=tf.zeros_initializer(),
+                                        trainable=True,
                                         name='beta')
     def apply(self):
         # keep_dims=True will return N * 1 * 1 * C mu and var

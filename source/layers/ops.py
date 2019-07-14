@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np 
 
-from source.layers import normalization
+from source.layers.normalization import instance_normalization
 
 def conv2d(inputs, 
            filters, 
@@ -17,7 +17,7 @@ def conv2d(inputs,
     
     if mode not in ['training', 'evaluating']:
         raise NotImplementedError('only training and evaluating modes are implemented')
-        
+
     with tf.variable_scope(name):
         in_channels = inputs.get_shape()[-1]
         out_channels = filters
@@ -42,12 +42,15 @@ def conv2d(inputs,
         print('activation', activation)
         print('normalization', normalization)
 
-        if normalization == 'instance_normalization':
-            conv = normalization.instance_normalization(inputs=conv,
-                                                        mode=mode,
-                                                        name='instance_normalization')
+        if normalization:
+            if normalization == 'instance_normalization':
+                conv = instance_normalization(inputs=conv,
+                                              mode=mode,
+                                              name='instance_normalization')
+            else:
+                raise NotImplementedError('only instance_normalization is implemented')
         else:
-            raise NotImplementedError('only instance_normalization is implemented')
+            print('no normalization applied')
 
         # only works for some activation functions
         # need to change this for general case

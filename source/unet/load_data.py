@@ -29,6 +29,8 @@ class DataPipeline(object):
         labels = labels[idx]
 
         load = int(training_params['load'])
+        print('number of images to be loaded: {}'.format(load))
+        
         self.images = images[0:load]
         self.labels = labels[0:load]
         print(self.images.shape, self.labels.shape)
