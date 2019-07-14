@@ -12,8 +12,12 @@ def conv2d(inputs,
            bias_initializer=tf.constant_initializer(value=0.01),
            normalization=None,
            activation=None,
+           mode='training',
            name='conv2d'):
     
+    if mode not in ['training', 'evaluating']:
+        raise NotImplementedError('only training and evaluating modes are implemented')
+        
     with tf.variable_scope(name):
         in_channels = inputs.get_shape()[-1]
         out_channels = filters
@@ -40,6 +44,7 @@ def conv2d(inputs,
 
         if normalization == 'instance_normalization':
             conv = normalization.instance_normalization(inputs=conv,
+                                                        mode=mode,
                                                         name='instance_normalization')
         else:
             raise NotImplementedError('only instance_normalization is implemented')

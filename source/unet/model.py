@@ -14,6 +14,9 @@ class UNet(object):
                  mode='training',
                  training_params=None):
 
+        if mode not in ['training', 'evaluating']:
+            raise NotImplementedError('only training and evaluating modes are implemented')
+
         # network specs
         self.network_specs = network_specs
 
@@ -29,6 +32,7 @@ class UNet(object):
         self.input_shape = list(self.inputs.shape[1:])
         self.labels = datapipe.labels
 
+        self.mode = mode
         # training mode must supply training_params
         if mode == 'training':
             # training_params has all the training parameters
@@ -74,6 +78,7 @@ class UNet(object):
                                 padding=padding,
                                 normalization='instance_normalization',
                                 activation=tf.nn.relu,
+                                mode=self.mode,
                                 name='conv1')
             out = layers.conv2d(inputs=out,
                                 filters=filters,
@@ -82,6 +87,7 @@ class UNet(object):
                                 padding=padding,
                                 normalization='instance_normalization',
                                 activation=tf.nn.relu,
+                                mode=self.mode,
                                 name='conv2')
             maxp = layers.max_pooling2d(inputs=out,
                                         pool_size=2,
@@ -108,6 +114,7 @@ class UNet(object):
                                 padding=padding,
                                 normalization='instance_normalization',
                                 activation=tf.nn.relu,
+                                mode=self.mode,                                
                                 name='conv1')
             out = layers.conv2d(inputs=out,
                                 filters=filters,
@@ -116,6 +123,7 @@ class UNet(object):
                                 padding=padding,
                                 normalization='instance_normalization',
                                 activation=tf.nn.relu,
+                                mode=self.mode,
                                 name='conv2')
         return out
 
@@ -176,7 +184,9 @@ class UNet(object):
                                     kernel_size=1,
                                     stride_size=1,
                                     padding='SAME',
+                                    normalization=None,
                                     activation=None,
+                                    mode=self.mode,
                                     name='final_layer')
         self.preds = tf.nn.sigmoid(self.logits)
         self.next_labels = self.datapipe.next_labels

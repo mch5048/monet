@@ -92,9 +92,16 @@ class InstanceNormalization(object):
 def instance_normalization(inputs,
                            epsilon=1e-6,
                            momentum=0.99,
+                           mode='training',
                            name='instance_normalization'):
     layer = InstanceNormalization(inputs=inputs,
                                   epsilon=epsilon,
                                   momentum=momentum,
                                   name=name)
-    return layer.apply()
+    if mode == 'training':
+        return layer.apply()
+    elif mode == 'evaluating':
+        return layer.inference_apply()
+    # we check this earlier, yet being extra careful does not hurt
+    else:
+        raise NotImplementedError('only training and evaluating modes are implemented')
