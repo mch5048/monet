@@ -197,7 +197,6 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
         print(z_sb.get_shape())
     return z_sb
 
-# we will be using transposed convolution weights with 'same' padding
 # cheap and faster solution for nearest neighbors upsampling
 def upsampling_2d(inputs,
                   factors,

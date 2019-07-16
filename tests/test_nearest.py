@@ -43,7 +43,6 @@ dst = cv2.resize(image,
 print(dst)
 
 ## upsampling
-# cv2.INTER_NEAREST: max_pooling
 dst = cv2.resize(image, 
                  None, 
                  fx=2.0, 
