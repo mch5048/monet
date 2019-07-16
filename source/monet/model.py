@@ -1,50 +1,24 @@
 from components import VAE, UNet
 from probability import gaussian
-from source.helpers import kl_divergence
+from source.misc import kl_divergence
 
 class MONet(object):
     def __init__(self,
-                 network_spec,
                  datapipe,
-                 scope='unet',
-                 mode='training',
-                 training_params=None):
-        if mode not in ['training', 'evaluating']:
-            raise NotImplementedError('only training and evaluating modes are implemented')
+                 network_spec,
+                 scope='monet'):
 
-        # network specs
-        self.network_specs = network_specs
-        self.vae_specs = network_specs['vae']
-        self.attention_specs = network_specs['attention']
-
-        # k_steps
-        self.k_steps = network_specs['k_steps']
-
-        # datapipe
         self.datapipe = datapipe
 
-        # inputs and images are kind of confusing to use at the same time
-        # might need to change to a unified name
-        self.inputs = datapipe.images
-        self.input_shape = list(self.inputs.shape[1:])
-        self.labels = datapipe.labels
+        self.network_spec = network_spec
 
-        self.mode = mode
-        # training mode must supply training_params
-        if mode == 'training':
-            # training_params has all the training parameters
-            self.lr = training_params['lr']
-            self.loss = training_params['loss']
-            self.n_run = datapipe.n_run
-
-            with tf.variable_scope(scope):
-                # losses and optimizer are built in _build_graph()
-                self._build_graph()
-            self.vars_initializer = tf.global_variables_initializer()
-
-        if mode == 'evaluating':
-            with tf.variable_scope(scope):
-                self._build_graph()
+        self.beta, self.gamma = 0.5, 0.5
+        
+        with tf.variable_scope(scope):
+            # losses and optimizer are built in _build_graph()
+            self._build_placeholders()
+            self._build_graph()
+        self.vars_initializer = tf.global_variables_initializer()
 
         # saver
         self.saver = tf.train.Saver()
@@ -58,31 +32,74 @@ class MONet(object):
                                      intra_op_parallelism_threads=4,
                                      allow_soft_placement=True)
 
-    def _build_graph(self,
-                     beta,
-                     gamma):
-        component_vae = VAE(self.vae_specs)
-        attention_net = UNet(self.attention_specs)
+    def _build_graph(self):
 
-        # for now forget about k_steps, just write it down
+        next_element = self.datapipe.next_element
+        ###
+        # step 1
+        ###
+        # define log_scope0
+        log_scope0 = ###TODO
+
+        attention_net1 = UNet(network_spec=self.network_spec['unet'],
+                              inputs=next_element,
+                              log_scope=log_scope0)
+        log_mask1, log_scope1 = attention_net1.output()
+
+        component_vae1 = VAE(network_spec=self.network_spec['vae'],
+                             inputs=next_element,
+                             log_mask=log_mask1)
+        mean_1, log_var1, log_re_mask1, re_image1 = component_vae1.output()
+
+        ###
+        # step 2
+        ###
+        attention_net2 = UNet(network_spec=self.network_spec['unet'],
+                              inputs=next_element,
+                              log_scope=log_scope1,
+                              reuse=True)
+
+        log_mask2, log_scope2 = attention_net2.output()
+
+        component_vae2 = VAE(network_spec=self.network_spec['vae'], 
+                             inputs=next_element,
+                             log_mask=log_mask2,
+                             reuse=True)
+        mean_2, log_var2, log_re_mask2, re_image2 = component_vae2.output()
+
+        ###
+        # step 3
+        ###
+        '''
+        attention_net3 = UNet(network_spec=self.network_spec['unet'],
+                              inputs=self.images_ph,
+                              log_scope=log_scope2,
+                              reuse=True)
+        log_mask3, log_scope3 = attention_net3.output()
+        '''
+
+        # this is only here for clarity
+        log_mask3 = log_scope2
+        component_vae3 = VAE(network_spec=self.network_spec['vae'], 
+                             inputs=next_element,
+                             log_mask=log_mask3,
+                             reuse=True)
+        mean_3, log_var3, log_re_mask3, re_image3 = component_vae3.output()
+
+        self.predictions = [log_mask1,
+                            re_image1,
+                            log_mask2,
+                            re_image2,
+                            log_mask3,
+                            re_image3]
+
         # prepare a dataset of 2 objects
-
         re_var = 0.5
 
-        # step 1
-        log_mask1, log_scope1 = attention_net.feed(image=x, scope=log_scope0)
-        mean_1, log_var1, log_re_mask1, re_image1 = component_vae.feed(image=x, mask=log_mask1)
+        ######
+        ### LOSSES
+        ######
 
-        # step 2
-        log_mask2, log_scope2 = attention_net.feed(image=x, scope=log_scope1)
-        mean_2, log_var2, log_re_mask2, re_image2 = component_vae.feed(image=x, mask=log_mask2)
-
-        # step 3
-        log_mask3, log_scope3 = attention_net.feed(image=x, scope=log_scope2)
-        mean_3, log_var3, log_re_mask3, re_image3 = component_vae.feed(image=x, mask=log_mask3)
-
-        # also build loss here
-        
         ###
         # decoder NLL given mixture density
         ###
@@ -113,7 +130,7 @@ class MONet(object):
         mean_K = var_K * ((tf.exp(-log_var1) * mean_1) + (tf.exp(-log_var2) * mean_2) + (tf.exp(-log_var3) * mean_3))
 
         # change this beta appropriately
-        kl_latent = beta * kl_divergence(mu=mean_K, logvar=log_var_K)
+        kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
 
         ###
         # attention mask loss
@@ -133,5 +150,68 @@ class MONet(object):
         phi3 = tf.exp(log_mask3) * (log_mask3 - log_softmax3)
 
         # kl_attention = [N, 1]
-        kl_attention = gamma * tf.reduce_mean(phi1 + phi2 + phi3, axis=[1, 2, 3])
+        kl_attention = self.gamma * tf.reduce_mean(phi1 + phi2 + phi3, axis=[1, 2, 3])
 
+        self.loss = reduce_nll_mixture + kl_latent + kl_attention
+
+        optimizer = tf.train.AdamOptimizer(lr=1e-4)
+        self.train_op = optimizer.minimize(self.loss)
+
+    def train(self, save_path, epoch=0, ckpt_path=None):
+        with tf.Session(config=self.config) as sess:
+            # init ops
+            if ckpt_path:
+                print('restoring {}...'.format(ckpt_path))
+                self.saver.restore(sess, ckpt_path)
+                print('restored')
+                self.n_run = epoch * (self.inputs.shape[0] // self.datapipe.batch_size)
+            else:
+                sess.run(self.vars_initializer)
+
+            # datapipe initializer
+            sess.run(self.datapipe.initializer, 
+                     feed_dict={self.datapipe.images_ph: self.datapipe.images})
+
+            # n_epoch, epoch loss just out of curiosity
+            n_epoch, epoch_loss = epoch + 1, []
+            for i in range(self.n_run):
+                try:
+                    l, _ = sess.run([self.loss, self.train_op])
+                    epoch_loss.append(l)
+
+                except tf.errors.OutOfRangeError:
+                    sess.run(self.datapipe.initializer, 
+                             feed_dict={self.datapipe.images_ph: self.datapipe.images})
+
+                    print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))
+                    
+                    if not(n_epoch % 5):
+                        name = 'epoch_{}.ckpt'.format(n_epoch)
+                        path = os.path.join(save_path, name)
+                        self.saver.save(sess, path)
+                        print('epoch_{} models are saved to: {}'.format(n_epoch, path))
+
+                    # reset ops
+                    n_epoch += 1
+                    epoch_loss = []
+
+            name = 'epoch_{}.ckpt'.format(n_epoch)
+            path = os.path.join(save_path, name)
+            self.saver.save(sess, path)
+            print('final model is saved to: {}'.format(path))
+
+
+    # evaluating semantic maps
+    # TODO: LATER
+    def evaluate(self, ckpt_path):
+        with tf.Session(config=self.config) as sess:
+            # init ops
+            print('restoring {}...'.format(ckpt_path))
+            self.saver.restore(sess, ckpt_path)
+            print('restored')
+            
+            # datapipe initializer
+            sess.run(self.datapipe.initializer, 
+                     feed_dict={self.datapipe.images_ph: self.datapipe.images})
+
+            return sess.run(self.predictions)
