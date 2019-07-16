@@ -1,0 +1,112 @@
+{
+    "vae": {
+        "encoder": [
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 2,
+                    "padding": "SAME",
+                    "activation": "tf.nn.relu"
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 2,
+                    "padding": "SAME",
+                    "activation": "tf.nn.relu"
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "stride_size": 2,
+                    "padding": "SAME",
+                    "activation": "tf.nn.relu"
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "stride_size": 2,
+                    "padding": "SAME",
+                    "activation": "tf.nn.relu"
+                }
+            },
+            
+            {
+                "flatten": true
+            },
+            {
+                "dense" : {
+                    "units": 256
+                }
+            },
+            {
+                "dense" : {
+                    "units": 32
+                }
+            }            
+        ],
+
+        "latent_dim": 16,
+        "decoder": [
+            {
+                "spatial_broadcast": {
+                    "w": 72,
+                    "h": 72
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 1,
+                    "padding": "VALID",
+                    "activation": "tf.nn.relu"                
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 1,
+                    "padding": "VALID",
+                    "activation": "tf.nn.relu"                
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 1,
+                    "padding": "VALID",
+                    "activation": "tf.nn.relu"                
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 32,
+                    "kernel_size": 3,
+                    "stride_size": 1,
+                    "padding": "VALID",
+                    "activation": "tf.nn.relu"                
+                }
+            },
+            {
+                "conv2d": {
+                    "filters": 4,
+                    "kernel_size": 3,
+                    "stride_size": 1,
+                    "padding": "VALID",
+                    "activation": "None"                
+                }
+            }
+        ]
+    },
+    "unet": "already_implemented"
+}

@@ -5,15 +5,15 @@ from source.misc import kl_divergence
 class MONet(object):
     def __init__(self,
                  datapipe,
-                 network_spec,
+                 network_specs,
                  scope='monet'):
 
         self.datapipe = datapipe
 
-        self.network_spec = network_spec
+        self.network_specs = network_specs
 
         self.beta, self.gamma = 0.5, 0.5
-        
+
         with tf.variable_scope(scope):
             # losses and optimizer are built in _build_graph()
             self._build_placeholders()
@@ -33,7 +33,6 @@ class MONet(object):
                                      allow_soft_placement=True)
 
     def _build_graph(self):
-
         next_element = self.datapipe.next_element
         ###
         # step 1
@@ -41,12 +40,12 @@ class MONet(object):
         # define log_scope0
         log_scope0 = ###TODO
 
-        attention_net1 = UNet(network_spec=self.network_spec['unet'],
+        attention_net1 = UNet(network_specs=self.network_specs['unet'],
                               inputs=next_element,
                               log_scope=log_scope0)
         log_mask1, log_scope1 = attention_net1.output()
 
-        component_vae1 = VAE(network_spec=self.network_spec['vae'],
+        component_vae1 = VAE(network_specs=self.network_specs['vae'],
                              inputs=next_element,
                              log_mask=log_mask1)
         mean_1, log_var1, log_re_mask1, re_image1 = component_vae1.output()
@@ -54,14 +53,14 @@ class MONet(object):
         ###
         # step 2
         ###
-        attention_net2 = UNet(network_spec=self.network_spec['unet'],
+        attention_net2 = UNet(network_specs=self.network_specs['unet'],
                               inputs=next_element,
                               log_scope=log_scope1,
                               reuse=True)
 
         log_mask2, log_scope2 = attention_net2.output()
 
-        component_vae2 = VAE(network_spec=self.network_spec['vae'], 
+        component_vae2 = VAE(network_specs=self.network_specs['vae'], 
                              inputs=next_element,
                              log_mask=log_mask2,
                              reuse=True)
@@ -71,7 +70,7 @@ class MONet(object):
         # step 3
         ###
         '''
-        attention_net3 = UNet(network_spec=self.network_spec['unet'],
+        attention_net3 = UNet(network_specs=self.network_specs['unet'],
                               inputs=self.images_ph,
                               log_scope=log_scope2,
                               reuse=True)
@@ -80,7 +79,7 @@ class MONet(object):
 
         # this is only here for clarity
         log_mask3 = log_scope2
-        component_vae3 = VAE(network_spec=self.network_spec['vae'], 
+        component_vae3 = VAE(network_specs=self.network_specs['vae'], 
                              inputs=next_element,
                              log_mask=log_mask3,
                              reuse=True)
@@ -94,8 +93,8 @@ class MONet(object):
                             re_image3]
 
         # prepare a dataset of 2 objects
-        re_var = 0.5
-
+        var_bg = 0.09 * 0.09
+        var_fg = 0.11 * 0.11
         ######
         ### LOSSES
         ######
@@ -106,9 +105,9 @@ class MONet(object):
         # log_mask = pixel_wise logits p of categorical distribution from attention masks 
         # re_image = pixel_wise means of a gaussian distribution
         # first loss is negative log likelihood of mixture density
-        mixture1 = tf.exp(log_mask1) * gaussian(re_image1, re_var)
-        mixture2 = tf.exp(log_mask2) * gaussian(re_image2, re_var)
-        mixture3 = tf.exp(log_mask3) * gaussian(re_image3, re_var)
+        mixture1 = tf.exp(log_mask1) * gaussian(re_image1, var_bg)
+        mixture2 = tf.exp(log_mask2) * gaussian(re_image2, var_fg)
+        mixture3 = tf.exp(log_mask3) * gaussian(re_image3, bar_fg)
 
         # nll_nixture = [N, H, W, C]
         nll_mixture = -tf.log(mixture1 + mixture2 + mixture3)
@@ -138,6 +137,9 @@ class MONet(object):
 
         # this is my interpretation of d_kl between attention masks parameterizing categorical distribution
         # produced from attention_net and recounstructed from vae
+
+        ## might need to use concat and log_softmax
+        ## this might not produce 
         log_sum = tf.log(tf.exp(log_re_mask1) + tf.exp(log_re_mask2) + tf.exp(log_re_mask3))
         log_softmax1 = log_re_mask1 - log_sum
         log_softmax2 = log_re_mask2 - log_sum
