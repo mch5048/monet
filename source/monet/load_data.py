@@ -24,12 +24,8 @@ class DataPipeline(object):
         
         print('begin: complete shuffling...')
         np.random.shuffle(idx)
-        images = images[idx]
+        self.images = images[idx]
 
-        load = int(training_params['load'])
-        print('number of images to be loaded: {}'.format(load))
-        
-        self.images = images[0:load]
         print(self.images.shape)
         print('end: complete shuffling...')
         

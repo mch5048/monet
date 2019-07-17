@@ -15,6 +15,8 @@ class MONet(object):
 
         self.beta, self.gamma = 0.5, 0.5
 
+        self.lr = training_params['lr']
+        
         with tf.variable_scope(scope):
             # losses and optimizer are built in _build_graph()
             self._build_placeholders()
@@ -161,7 +163,7 @@ class MONet(object):
 
         self.loss = reduce_nll_mixture + kl_latent + kl_attention
 
-        optimizer = tf.train.AdamOptimizer(lr=1e-4)
+        optimizer = tf.train.AdamOptimizer(lr=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
     def train(self, save_path, epoch=0, ckpt_path=None):
