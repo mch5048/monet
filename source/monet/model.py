@@ -1,3 +1,4 @@
+import numpy as np
 from components import VAE, UNet
 from probability import log_gaussian
 from source.misc import kl_divergence
@@ -16,7 +17,7 @@ class MONet(object):
         self.beta, self.gamma = 0.5, 0.5
 
         self.lr = training_params['lr']
-        
+
         with tf.variable_scope(scope):
             # losses and optimizer are built in _build_graph()
             self._build_placeholders()
@@ -40,8 +41,10 @@ class MONet(object):
         ###
         # step 1
         ###
-        # define log_scope0
-        log_scope0 = ###TODO
+        # define log_scope0 = [B, H, W, C]
+        H, W, C = self.datapipe.images.shape[1], self.datapipe.images.shape[2], self.datapipe.images.shape[3]
+        log_scope0 = np.ones([self.datapipe.batch_size, H, W, C])
+        log_scope0 = tf.convert_to_tensor(log_scope0)
 
         attention_net1 = UNet(network_specs=self.network_specs['unet'],
                               inputs=next_element,

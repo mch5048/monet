@@ -58,7 +58,7 @@ class UNet(object):
 
         # network specs
         self.network_specs = network_specs
-        self.mode = mode 
+        self.mode = mode
 
         self.images = images
         self.log_scope = log_scope

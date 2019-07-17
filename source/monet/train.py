@@ -1,7 +1,7 @@
 import os
 import json
 
-from model import MOnet
+from model import MONet
 from load_data import DataPipeline
 
 import sys
