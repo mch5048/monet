@@ -32,7 +32,7 @@ ellipses = images[elems:2*elems]
 heart = images[2*elems:]
 
 # number of examples to create
-N = 1e5
+N = 5e4
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
@@ -41,22 +41,28 @@ images = []
 d = {'s': 0, 'e': 0, 't': 0}
 
 def random_selector():
-    # select upto 3 elements
-    n_s = int(np.random.uniform())
-    n_e = int(np.random.uniform())
+    idx_s = int(elems * np.random.uniform())
+    idx_e = int(elems * np.random.uniform())
 
-    idx_s = (elems * np.random.uniform(size=n_s)).astype(np.int)
-    idx_e = (elems * np.random.uniform(size=n_e)).astype(np.int)
+    l_s = squares[idx_s]
+    l_e = ellipses[idx_e]
+    l_s = np.expand_dims(l_s, -1)
+    l_e = np.expand_dims(l_e, -1)
 
-    l_s = np.expand_dims(squares[idx_s], -1)
-    l_e = np.expand_dims(ellipses[idx_e], -1)
-
+    # print('l_s shape: ', l_s.shape)
     s_idx = np.nonzero(l_s)
     e_idx = np.nonzero(l_e)
     
     tmp = l_s + l_e
+    # print('tmp shape:', tmp.shape)
+
     tmp[tmp > 0.5] = 1.0
-    background = np.nonzero(1.0 - tmp)
+    b_idx = np.nonzero(1.0 - tmp)
+
+    # print('background transpose: ', np.transpose(b_idx).shape)
+    background = np.ones((64, 64, 3))
+    background[b_idx] = 0.0
+    # print('background is ready')
 
     front = np.random.uniform()
     if front < 0.5:
@@ -140,7 +146,16 @@ images = np.array(images)
 images = images.astype(np.float32)
 print(images.shape)
 
-plt.imshow(images[20], cmap='rgb')
+plt.imshow(images[20] * 255.0)
+plt.show()
+
+plt.imshow(images[30000] * 255.0)
+plt.show()
+
+plt.imshow(images[400] * 255.0)
+plt.show()
+
+plt.imshow(images[1000] * 255.0)
 plt.show()
 
 print('saving...')
