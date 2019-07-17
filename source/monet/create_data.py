@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 '''
 we will get two random images from spirites dataset
-and merge them
+and color them and merge them
 quick and easy
 '''
 
@@ -32,63 +32,66 @@ ellipses = images[elems:2*elems]
 heart = images[2*elems:]
 
 # number of examples to create
-N = 5e4
+N = 1e5
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
 images = []
-labels = []
 
-d = {'s': 0, 'e': 0, 'h': 0, 't': 0}
+d = {'s': 0, 'e': 0, 't': 0}
 
 def random_selector():
     # select upto 3 elements
-    n_s = int(3 * np.random.uniform())
-    n_e = int(3 * np.random.uniform())
-    n_h = int(3 * np.random.uniform())
+    n_s = int(np.random.uniform())
+    n_e = int(np.random.uniform())
 
     idx_s = (elems * np.random.uniform(size=n_s)).astype(np.int)
     idx_e = (elems * np.random.uniform(size=n_e)).astype(np.int)
-    idx_h = (elems * np.random.uniform(size=n_h)).astype(np.int)
 
-    l_s = squares[idx_s]
-    l_e = ellipses[idx_e]
-    l_h = heart[idx_h]
-    
-    def add(x):
-        x = np.sum(x, axis=0)
-        x[x > 0.5] = 1.0
-        return x
+    l_s = np.expand_dims(squares[idx_s], -1)
+    l_e = np.expand_dims(ellipses[idx_e], -1)
 
-    add_s = add(l_s)
-    add_e = add(l_e)
-    add_h = add(l_h)
+    s_idx = np.nonzero(l_s)
+    e_idx = np.nonzero(l_e)
     
+    tmp = l_s + l_e
+    tmp[tmp > 0.5] = 1.0
+    background = np.nonzero(1.0 - tmp)
+
+    front = np.random.uniform()
+    if front < 0.5:
+        # square is on the front
+        l_e[s_idx] = 0.0
+    else:
+        # ellipse is on the front
+        l_s[e_idx] = 0.0
+
+    l_s = np.repeat(l_s, 3, axis=2)
+    l_e = np.repeat(l_e, 3, axis=2)
+
+    # random coloring
+    c_s = np.random.uniform(size=3)
+    c_e = np.random.uniform(size=3)
+    c_b = np.random.uniform(size=3)
+
+    l_s = l_s * c_s
+    l_e = l_e * c_e
+    background = background * c_b
+
     c = np.random.uniform()
     r = 't'
-    # with p=0.15 only squares, p=0.15 only ellipses
-    # p=0.15 only hearts
+    # with p=0.10 only one square, p=0.10 only one ellipse
     zeros = np.zeros((64, 64, 1))
 
-    if c < 0.15:
+    if c < 0.10:
         r = 's'
-        imgs = add_s
-        labels = np.concatenate([np.expand_dims(add_s, -1), zeros, zeros], -1)
-    elif c < 0.30:
+        imgs = l_s + background
+    elif c < 0.20:
         r = 'e'
-        imgs = add_e
-        labels = np.concatenate([zeros, np.expand_dims(add_e, -1), zeros], -1)
-    elif c < 0.45:
-        r = 'h'
-        imgs = add_h
-        labels = np.concatenate([zeros, zeros, np.expand_dims(add_h, -1)], -1)
+        imgs = l_e + background
     else:
-        imgs = add_s + add_e + add_h
-        imgs[imgs > 0.5] = 1.0
-        labels = np.concatenate([np.expand_dims(add_s, -1),
-                                 np.expand_dims(add_e, -1),
-                                 np.expand_dims(add_h, -1)], -1)
-    return imgs, labels, r
+        imgs = l_s + l_e + background
+    return imgs, r
 
 '''
 def random_selector(select_from1, select_from2, lb='mixed'):
@@ -128,30 +131,20 @@ for i in range(N_mixed):
 '''
 
 for i in range(int(N)):
-    im, l, r = random_selector()
+    im, r = random_selector()
     images.append(im)
-    labels.append(l)
     d[r] += 1
 
 images = np.array(images) 
-labels = np.array(labels)
 
 images = images.astype(np.float32)
-labels = labels.astype(np.float32)
-print(images.shape, labels.shape)
+print(images.shape)
 
-plt.subplot(411)
-plt.imshow(images[20], cmap='gray')
-plt.subplot(412)
-plt.imshow(labels[20, :, :, 0], cmap='gray')
-plt.subplot(413)
-plt.imshow(labels[20, :, :, 1], cmap='gray')
-plt.subplot(414)
-plt.imshow(labels[20, :, :, 2], cmap='gray')
+plt.imshow(images[20], cmap='rgb')
 plt.show()
 
 print('saving...')
 print(d)
-save_path = 'data/multi_dsprites_semantic_64x64_training_3c_diff.npz'
-np.savez_compressed(save_path, imgs=images, labels=labels)
+save_path = 'data/monet_2object_colored_64x64_normalized.npz'
+np.savez_compressed(save_path, imgs=images)
 print('saved to {}'.format(save_path))
