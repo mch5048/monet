@@ -1,5 +1,5 @@
 from components import VAE, UNet
-from probability import gaussian
+from probability import log_gaussian
 from source.misc import kl_divergence
 
 class MONet(object):
@@ -92,6 +92,9 @@ class MONet(object):
                             log_mask3,
                             re_image3]
 
+        # shape check
+        print('shape of reconstructed image3: ', re_image3.shape)
+
         # prepare a dataset of 2 objects
         var_bg = 0.09 * 0.09
         var_fg = 0.11 * 0.11
@@ -105,12 +108,13 @@ class MONet(object):
         # log_mask = pixel_wise logits p of categorical distribution from attention masks 
         # re_image = pixel_wise means of a gaussian distribution
         # first loss is negative log likelihood of mixture density
-        mixture1 = tf.exp(log_mask1) * gaussian(re_image1, var_bg)
-        mixture2 = tf.exp(log_mask2) * gaussian(re_image2, var_fg)
-        mixture3 = tf.exp(log_mask3) * gaussian(re_image3, bar_fg)
+        # x = [N, H, W, C], mu = [N, H, W, 1] (should be, but check), var is scalar
+        log_mixture1 = log_mask1 + log_gaussian(x=next_element, mu=re_image1, var=var_bg)
+        log_mixture2 = log_mask2 + log_gaussian(x=next_element, mu=re_image2, var=var_fg)
+        log_mixture3 = log_mask3 + log_gaussian(x=next_element, mu=re_image3, var=var_fg)
 
         # nll_nixture = [N, H, W, C]
-        nll_mixture = -tf.log(mixture1 + mixture2 + mixture3)
+        nll_mixture = -tf.log(tf.exp(mixture1) + tf.exp(mixture2) + tf.exp(mixture3))
         # reduce_nll_mixture = [N, 1]
         reduce_nll_mixture = tf.reduce_mean(nll_mixture, axis=[1, 2, 3])
 
