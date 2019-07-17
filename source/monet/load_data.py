@@ -9,14 +9,13 @@ class DataPipeline(object):
         try:
             with np.load(image_path) as data:
                 images = data['imgs']
-                labels = data['labels']
         except:
             data = np.load(image_path)
             images = data['imgs']
-            labels = data['labels']
 
         print(images.shape)
-        images = np.expand_dims(images, axis=-1)
+        # we will be using colored images
+        # images = np.expand_dims(images, axis=-1)
 
         # tf.cast() ???
         images = images.astype(np.float32)
@@ -49,11 +48,10 @@ class DataPipeline(object):
 
     def _build_dataset(self):
         self.images_ph = tf.placeholder(self.images.dtype, self.images.shape)
-        self.labels_ph = tf.placeholder(self.labels.dtype, self.labels.shape)
-        dataset = tf.data.Dataset.from_tensor_slices((self.images_ph, self.labels_ph))
+        dataset = tf.data.Dataset.from_tensor_slices(self.images_ph)
         dataset = dataset.shuffle(self.images.shape[0] // 100)
         dataset = dataset.batch(batch_size=self.batch_size)
         dataset = dataset.prefetch(buffer_size=1)
         iterator = dataset.make_initializable_iterator()
         self.initializer = iterator.initializer
-        self.next_images, self.next_labels = iterator.get_next()
+        self.next_images = iterator.get_next()
