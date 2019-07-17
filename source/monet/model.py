@@ -6,6 +6,7 @@ class MONet(object):
     def __init__(self,
                  datapipe,
                  network_specs,
+                 training_params,
                  scope='monet'):
 
         self.datapipe = datapipe
@@ -170,9 +171,10 @@ class MONet(object):
                 print('restoring {}...'.format(ckpt_path))
                 self.saver.restore(sess, ckpt_path)
                 print('restored')
-                self.n_run = epoch * (self.inputs.shape[0] // self.datapipe.batch_size)
+                n_run = epoch * (self.datapipe.images.shape[0] // self.datapipe.batch_size)
             else:
                 sess.run(self.vars_initializer)
+                n_run = self.datapipe.n_run
 
             # datapipe initializer
             sess.run(self.datapipe.initializer, 
@@ -180,7 +182,7 @@ class MONet(object):
 
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
-            for i in range(self.n_run):
+            for i in range(n_run):
                 try:
                     l, _ = sess.run([self.loss, self.train_op])
                     epoch_loss.append(l)

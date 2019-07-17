@@ -1,7 +1,7 @@
 import os
 import json
 
-from model import UNet
+from model import MOnet
 from load_data import DataPipeline
 
 import sys
@@ -24,9 +24,9 @@ def train(network_specs,
 
     print('creating network model...')
     # create model VAE
-    model = UNet(network_specs=network_specs,
-                 datapipe=datapipe,
-                 training_params=training_params)
+    model = MONet(network_specs=network_specs,
+                  datapipe=datapipe,
+                  training_params=training_params)
 
     # train the model
     # save_config is flexible
@@ -40,8 +40,8 @@ def train(network_specs,
                 epoch=epoch)
 
 if __name__ == '__main__':
-    network_specs_json = 'source/unet/params/multid/model.json'
-    training_params_json = 'source/unet/params/multid/params.json'
+    network_specs_json = 'source/monet/params/test/model.json'
+    training_params_json = 'source/monet/params/test/params.json'
 
     with open(network_specs_json, 'r') as f:
         network_specs = json.load(f)
@@ -50,20 +50,20 @@ if __name__ == '__main__':
         training_params = json.load(f)
 
     # load data
-    image_path = 'data/multi_dsprites_semantic_64x64_training_3c_diff.npz'
+    image_path = 'data/monet_2object_colored_64x64.npz'
     
     # save path
-    save_path = 'source/unet/3class/'
+    save_path = 'source/monet/tmp/'
 
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
     # ckpt path to continue training
-    ckpt_path = 'source/unet/3class/epoch_10.ckpt'
+    ckpt_path = None
 
     train(network_specs=network_specs,
           training_params=training_params,
           image_path=image_path,
           save_path=save_path,
           ckpt_path=ckpt_path,
-          epoch=10)
+          epoch=0)
