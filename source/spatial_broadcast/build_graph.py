@@ -82,8 +82,8 @@ class VAE(object):
         else:
             raise NotImplementError('loss: {} is not implemented.'.format(self.loss))
 
-        kl_loss = misc.kl_divergence(mu=self.mu, logvar=self.logvar)
-        self.loss = rec_loss + kl_loss
+        self.kl_loss = misc.kl_divergence(mu=self.mu, logvar=self.logvar)
+        self.loss = rec_loss + self.kl_loss
 
     def _build_optimizer(self):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
@@ -107,9 +107,11 @@ class VAE(object):
             n_epoch, epoch_loss = 1, []
             for i in range(self.n_run):
                 try:
-                    l, _ = sess.run([self.loss, self.train_op])
+                    k, l, _ = sess.run([self.kl_loss, self.loss, self.train_op])
                     epoch_loss.append(l)
-
+                    if not (i % 1000):
+                        print('loss: ', l, l.shape)
+                        print('kl loss: ', k, k.shape)
                 except tf.errors.OutOfRangeError:
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.feat_ph: self.inputs})
