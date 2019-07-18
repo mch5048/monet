@@ -54,6 +54,7 @@
         ],
 
         "latent_dim": 16,
+        "num_channel": 4,
         "decoder": [
             {
                 "spatial_broadcast": {
@@ -99,10 +100,10 @@
             },
             {
                 "conv2d": {
-                    "filters": 4,
+                    "filters": "num_channel",
                     "kernel_size": 3,
                     "stride_size": 1,
-                    "padding": "VALID",
+                    "padding": "SAME",
                     "activation": "None"                
                 }
             }

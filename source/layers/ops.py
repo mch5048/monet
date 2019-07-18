@@ -38,9 +38,9 @@ def conv2d(inputs,
         conv = tf.nn.bias_add(value=conv, 
                               bias=b,
                               name='bias_')
-        print('conv', conv.get_shape())
-        print('activation', activation)
-        print('normalization', normalization)
+        # print('conv', conv.get_shape())
+        # print('activation', activation)
+        # print('normalization', normalization)
 
         if normalization:
             if normalization == 'instance_normalization':
@@ -49,8 +49,11 @@ def conv2d(inputs,
                                               name='instance_normalization')
             else:
                 raise NotImplementedError('only instance_normalization is implemented')
+        '''
         else:
             print('no normalization applied')
+        '''
+
 
         # only works for some activation functions
         # need to change this for general case
@@ -117,7 +120,7 @@ def max_pooling2d(inputs,
                                   padding=padding,
                                   name='max_pooling2d_')
 
-    print('max_pool', max_pool.get_shape())
+    # print('max_pool', max_pool.get_shape())
     return max_pool
 
 def dropout(inputs, 
@@ -173,7 +176,7 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
         z_b = tf.tile(input=z, multiples=[1, h * w], name='tile')
         z_b = tf.reshape(z_b, shape=[batch_size, h, w, k])
 
-        print('in spatial broadcast', z_b.get_shape())
+        # print('in spatial broadcast', z_b.get_shape())
 
         '''
         indexing does NOT matter
@@ -194,7 +197,7 @@ def spatial_broadcast(z, w, h, name='spatial_broadcast'):
                          back_prop=True,
                          swap_memory=True,
                          name='map_concat')
-        print(z_sb.get_shape())
+        print('z_sb after: ', z_sb.get_shape())
     return z_sb
 
 # cheap and faster solution for nearest neighbors upsampling
@@ -221,22 +224,22 @@ def crop_to_fit(down_inputs,
         down_shape = down_inputs.get_shape().as_list()
         up_shape = up_inputs.get_shape().as_list()
 
-        print(down_shape, up_shape)
+        # print(down_shape, up_shape)
 
         down_H, down_W = down_shape[1], down_shape[2]
         up_H, up_W = up_shape[1], up_shape[2]
 
         # extract the center (the reason for subtracting 1)
         d_H = max(down_H - up_H - 1, 0)
-        print('d_H in this level is: {}'.format(d_H))
+        # print('d_H in this level is: {}'.format(d_H))
 
         d_W = max(down_W - up_W - 1, 0)
-        print('d_W in this level is: {}'.format(d_W))
+        # print('d_W in this level is: {}'.format(d_W))
 
         down_inputs = down_inputs[:, d_H:(d_H + up_H), d_W:(d_W + up_W), :]
-        print('down_input cropped shape: ', down_inputs.get_shape())
-        print('up_input shape: ', up_inputs.get_shape())
+        # print('down_input cropped shape: ', down_inputs.get_shape())
+        # print('up_input shape: ', up_inputs.get_shape())
 
         concat = tf.concat([down_inputs, up_inputs], axis=-1)
-        print('concat shape: ', concat.get_shape())
+        # print('concat shape: ', concat.get_shape())
     return concat

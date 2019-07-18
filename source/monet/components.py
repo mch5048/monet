@@ -1,5 +1,6 @@
 import tensorflow as tf
 from network import build_network
+from source import layers
 from source.misc import sampler_normal 
 
 class VAE(object):
@@ -15,7 +16,7 @@ class VAE(object):
         self.images = images
         self.log_mask = log_mask
         
-        with tf.variable_scope(scope=scope, reuse=reuse):
+        with tf.variable_scope(scope, reuse=reuse):
             self._build_graph()
 
     def _build_graph(self):
@@ -40,9 +41,12 @@ class VAE(object):
                                model_specs=self.network_specs['decoder'],
                                num_channel=self.network_specs['num_channel'],
                                name='decoder')
-        self.log_mask, self.image_mean = tf.split(logits,
-                                                  [1, 3],
-                                                  axis=-1)
+        self.log_mask, image_mean = tf.split(logits,
+                                             [1, 3],
+                                             axis=-1)
+        
+        self.image_mean = tf.nn.sigmoid(image_mean)
+
 
     def output(self):
         return self.mean, self.log_var, self.log_mask, self.image_mean
@@ -63,7 +67,7 @@ class UNet(object):
         self.images = images
         self.log_scope = log_scope
 
-        with tf.variable_scope(scope=scope, reuse=reuse):
+        with tf.variable_scope(scope, reuse=reuse):
             self._build_graph()
 
     # THIS FUNCTIONS WILL BE REMOVED
@@ -136,6 +140,19 @@ class UNet(object):
     # we will be testing unet segmentation on dspirites
     # THEN: we will factorize using .json
     def _build_graph(self):
+        '''
+        # initial log scope
+        if self.log_scope is None:
+            shape = self.images.get_shape().as_list()
+            B, H, W, C = 16, shape[1], shape[2], 1
+            # np.ones([self.datapipe.batch_size, H, W, C]).astype(np.float32)
+            self.log_scope = tf.get_variable('log_scope0', 
+                                             shape=[B, H, W, C], 
+                                             initializer=tf.zeros_initializer(), 
+                                             dtype=tf.float32, 
+                                             trainable=False)
+        '''
+
         inputs = tf.concat([self.images, self.log_scope], axis=-1)
 
         # downsampling path
@@ -143,23 +160,23 @@ class UNet(object):
         down_out1, maxp1 = self._block_down(inputs=inputs,
                                             filters=init_filter,
                                             padding='SAME',
-                                            name='down_block1')
+                                            scope='down_block1')
         down_out2, maxp2 = self._block_down(inputs=maxp1,
                                             filters=init_filter*2,
                                             padding='SAME',
-                                            name='down_block2')
+                                            scope='down_block2')
         down_out3, maxp3 = self._block_down(inputs=maxp2,
                                             filters=init_filter*4,
                                             padding='SAME',
-                                            name='down_block3')
+                                            scope='down_block3')
         down_out4, maxp4 = self._block_down(inputs=maxp3,
                                             filters=init_filter*8,
                                             padding='SAME',
-                                            name='down_block4')
+                                            scope='down_block4')
         down_out5, maxp5 = self._block_down(inputs=maxp4,
                                             filters=init_filter*16,
                                             padding='SAME',
-                                            name='down_block5')
+                                            scope='down_block5')
 
         # they put a 3-layer MLP here
         
@@ -168,22 +185,22 @@ class UNet(object):
                                  up_inputs=down_out5,
                                  filters=init_filter*8,
                                  padding='SAME',
-                                 name='up_block4')
+                                 scope='up_block4')
         up_out3 = self._block_up(down_inputs=down_out3,
                                  up_inputs=up_out4,
                                  filters=init_filter*4,
                                  padding='SAME',
-                                 name='up_block3')
+                                 scope='up_block3')
         up_out2 = self._block_up(down_inputs=down_out2,
                                  up_inputs=up_out3,
                                  filters=init_filter*2,
                                  padding='SAME',
-                                 name='up_block2')
+                                 scope='up_block2')
         up_out1 = self._block_up(down_inputs=down_out1,
                                  up_inputs=up_out2,
                                  filters=init_filter,
                                  padding='SAME',
-                                 name='up_block1')
+                                 scope='up_block1')
 
         # final layers
         ## TODO
@@ -198,13 +215,27 @@ class UNet(object):
                                name='final_layer')
 
         # compute log_softmax for the current attention
-        # CAVEAT = axis[1, 2]
-        self.log_softmax = tf.nn.log_softmax(logits=logits,
-                                             axis=[1, 2])
-        self.log_neg = tf.nn.log_softmax(logits=1.0 - logits,
-                                         axis=[1, 2])
+        # CAVEAT = axis[1, 2], changed it
+        shape = tf.shape(logits)
+        N, H, W, C = shape[0], shape[1], shape[2], shape[3]
+        print('logits shape before: ', shape)
+        logits = tf.reshape(tf.transpose(logits, [0, 3, 1, 2]), [N * C, H * W])
+        print('logits shape: ', logits.shape)
+
+        log_softmax = tf.nn.log_softmax(logits=logits,
+                                        axis=-1)
+        log_neg = tf.log(1.0 - tf.exp(log_softmax))
+
+        self.log_softmax = tf.transpose(tf.reshape(log_softmax, [N, C, H, W]), [0, 2, 3, 1])
+        self.log_neg = tf.transpose(tf.reshape(log_neg, [N, C, H, W]), [0, 2, 3, 1])
+
+        print('log_softmax shape: ', self.log_softmax.shape)
+        print('log_neg shape: ', self.log_neg.shape)
 
     def output(self):
-        self.log_mask = self.log_scope + self.log_softmax
-        self.log_scope = self.log_scope + self.log_neg
-        return self.log_mask, self.log_scope
+        log_mask = self.log_scope + self.log_softmax
+        log_scope = self.log_scope + self.log_neg
+        return log_mask, log_scope
+
+    def additional_output(self):
+        return self.log_softmax, self.log_neg

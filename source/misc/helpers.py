@@ -1,9 +1,10 @@
 import tensorflow as tf
 
 # compute KL(q(z|X) || p(z)) where p(z) comes from N(0, I)
+# do NOT reduce mean
 def kl_divergence(mu, logvar):
     kl = 0.5 * (tf.exp(logvar) + tf.square(mu) - logvar - 1.0)
-    return tf.reduce_mean(tf.reduce_sum(kl, axis=1))
+    return tf.reduce_sum(kl, axis=1)
 
 # compute cross entropy, this also works for multilabel images
 # because we are flattening logits and labels

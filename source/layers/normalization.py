@@ -56,18 +56,18 @@ class InstanceNormalization(object):
                                   axes=self.moment_axes,
                                   keep_dims=True)
 
-        print(mean.get_shape().as_list(), var.get_shape().as_list())
+        # print(mean.get_shape().as_list(), var.get_shape().as_list())
 
         # here's another confusing part in tensorflow
         # correct EMA to update variable with value is alpha * value + (1 - alpha) * variable
         # we do the opposite, which is fine, technically the same things. as far as understand alpha = 1 - momentum
         # higher momentum does not forget the past easily
         # MUST CHANGE THIS
-        print(self.moving_mean.dtype)
+        # print(self.moving_mean.dtype)
 
         reduced_mean = tf.reduce_mean(tf.squeeze(mean), axis=0)
         reduced_var = tf.reduce_mean(tf.squeeze(var), axis=0)
-        print(reduced_mean.shape, reduced_var.shape)
+        # print(reduced_mean.shape, reduced_var.shape)
 
         update_mean = tf.assign(self.moving_mean, self.moving_mean * self.momentum + reduced_mean * (1.0 - self.momentum))
         
