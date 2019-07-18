@@ -143,6 +143,7 @@ class MONet(object):
         # KL divergence of factorized latent with beta
         ###
 
+        '''
         # inv_var_K = sum(inv_var_k) -> sum(exp(-log_var)  
         # [N, l] where l is the latent dim, we can do those operations because diagonal covariance matrix
         inv_var_K = tf.exp(-log_var1) + tf.exp(-log_var2) + tf.exp(-log_var3)
@@ -155,12 +156,14 @@ class MONet(object):
         self.kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
         
         '''
-        # there is a problem with the above formulation
+        
+        # the above formulation is correct but unfortunately not for this.
+        # try both of the formulation to see different results though
         kl1 = kl_divergence(mu=mean_1, logvar=log_var1)
         kl2 = kl_divergence(mu=mean_2, logvar=log_var2)
         kl3 = kl_divergence(mu=mean_3, logvar=log_var3)
         self.kl_latent = self.beta * (kl1 + kl2 + kl3)
-        '''
+        
 
         ###
         # attention mask loss
@@ -216,6 +219,8 @@ class MONet(object):
 
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
+            nll, lat, att = None, None, None
+
             for i in range(n_run):
                 try:
                     m, p, im, nll, lat, att, l, _ = sess.run([self.mask_total, self.predictions, self.datapipe.next_images, self.nll_mixture, self.kl_latent, self.kl_attention, self.loss, self.train_op])
@@ -262,7 +267,10 @@ class MONet(object):
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
-                    print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))
+                    print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))                        
+                    print('nll: ', nll, 'nll.shape: ', nll.shape)
+                    print('lat: ', lat, 'lat.shape: ', lat.shape)
+                    print('att: ', att, 'att.shape: ', att.shape)
                     
                     if not(n_epoch % 5):
                         name = 'epoch_{}.ckpt'.format(n_epoch)
