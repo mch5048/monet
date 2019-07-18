@@ -19,7 +19,7 @@ class MONet(object):
 
         self.network_specs = network_specs
 
-        self.beta, self.gamma = 0.0, 0.5
+        self.beta, self.gamma = 0.5, 0.5
 
         self.lr = training_params['lr']
 
@@ -129,16 +129,15 @@ class MONet(object):
         # re_image = pixel_wise means of a gaussian distribution
         # first loss is negative log likelihood of mixture density
         # x = [N, H, W, C], mu = [N, H, W, C] (should be, but check), var is scalar
-        self.re = re_image3
-        self.lg = log_gaussian(x=next_element, mu=re_image1, var=var_bg)
-        log_mixture1 = log_mask1 + self.lg
+        log_mixture1 = log_mask1 + log_gaussian(x=next_element, mu=re_image1, var=var_bg)
         log_mixture2 = log_mask2 + log_gaussian(x=next_element, mu=re_image2, var=var_fg)
         log_mixture3 = log_mask3 + log_gaussian(x=next_element, mu=re_image3, var=var_fg)
 
         # nll_nixture = [N, H, W, C]
         nll_mixture = tf.log(tf.exp(log_mixture1) + tf.exp(log_mixture2) + tf.exp(log_mixture3) + 1e-10)
         # reduce_nll_mixture = [N, 1]
-        self.nll_mixture = -tf.reduce_mean(nll_mixture, axis=[1, 2, 3])
+        # not reduce_mean, reduce_sum
+        self.nll_mixture = -tf.reduce_sum(nll_mixture, axis=[1, 2, 3])
 
         ###
         # KL divergence of factorized latent with beta
@@ -153,15 +152,15 @@ class MONet(object):
         log_var_K = -tf.log(inv_var_K)
 
         mean_K = var_K * ((tf.exp(-log_var1) * mean_1) + (tf.exp(-log_var2) * mean_2) + (tf.exp(-log_var3) * mean_3))
+        self.kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
         
         '''
         # there is a problem with the above formulation
         kl1 = kl_divergence(mu=mean_1, logvar=log_var1)
         kl2 = kl_divergence(mu=mean_2, logvar=log_var2)
         kl3 = kl_divergence(mu=mean_3, logvar=log_var3)
+        self.kl_latent = self.beta * (kl1 + kl2 + kl3)
         '''
-
-        self.kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
 
         ###
         # attention mask loss
@@ -177,7 +176,6 @@ class MONet(object):
         log_softmax2 = log_re_mask2 - log_sum
         log_softmax3 = log_re_mask3 - log_sum
 
-
         self.predictions = [log_softmax1,
                             re_image1,
                             log_softmax2,
@@ -192,7 +190,8 @@ class MONet(object):
         phi3 = tf.exp(log_mask3) * (log_mask3 - log_softmax3)
 
         # kl_attention = [N, 1]
-        self.kl_attention = self.gamma * tf.reduce_mean(phi1 + phi2 + phi3, axis=[1, 2, 3])
+        # again not reduce_mean, reduce_sum
+        self.kl_attention = self.gamma * tf.reduce_sum(phi1 + phi2 + phi3, axis=[1, 2, 3])
 
         self.loss = tf.reduce_mean(self.nll_mixture + self.kl_latent + self.kl_attention)
 
@@ -230,8 +229,6 @@ class MONet(object):
                     for j, lm in enumerate(log_m):
                         print('log_mask_{}: '.format(j+1), np.squeeze(lm[0]), lm.shape)
                     print('there is inf: ', np.argmax(r < 9e-37))
-                    '''
-                    
                     if not (i % 1000):
                         print(np.sum(m - 1.0))
                         print(p[0][0].shape)
@@ -260,7 +257,7 @@ class MONet(object):
                         print('nll: ', nll, 'nll.shape: ', nll.shape)
                         print('lat: ', lat, 'lat.shape: ', lat.shape)
                         print('att: ', att, 'att.shape: ', att.shape)
-                    
+                        '''
                 except tf.errors.OutOfRangeError:
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
@@ -273,8 +270,6 @@ class MONet(object):
                         self.saver.save(sess, path)
                         print('epoch_{} models are saved to: {}'.format(n_epoch, path))
 
-                    if n_epoch == 5:
-                        self.beta = 0.0
                     # reset ops
                     n_epoch += 1
                     epoch_loss = []

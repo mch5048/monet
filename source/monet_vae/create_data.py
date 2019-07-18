@@ -56,7 +56,7 @@ def random_selector():
     b_idx = np.nonzero(1.0 - tmp)
 
     # print('background transpose: ', np.transpose(b_idx).shape)
-    background = np.ones((64, 64, 3))
+    background = np.ones((64, 64, 1))
     background[b_idx] = 0.0
     # print('background is ready')
 
@@ -70,6 +70,7 @@ def random_selector():
 
     rl_s = np.repeat(l_s, 3, axis=2)
     rl_e = np.repeat(l_e, 3, axis=2)
+    background_colored = np.repeat(background, 3, axis=2)
 
     # random coloring
     c_s = np.random.uniform(size=3)
@@ -78,7 +79,7 @@ def random_selector():
 
     rl_s = rl_s * c_s
     rl_e = rl_e * c_e
-    background_colored = background * c_b
+    background_colored = background_colored * c_b
 
     c = np.random.uniform()
     r = 't'
@@ -93,14 +94,14 @@ def random_selector():
     if c < 0.10:
         r = 's'
         imgs = rl_s + background_colored
-        masks = np.concatenate([log_backgroung, log_square, log_zeros])
+        masks = np.concatenate([log_background, log_square, log_zeros], axis=-1)
     elif c < 0.20:
         r = 'e'
         imgs = rl_e + background_colored
-        masks = np.concatenate([log_backgroung, log_zeros, log_ellipse])
+        masks = np.concatenate([log_background, log_zeros, log_ellipse], axis=-1)
     else:
         imgs = rl_s + rl_e + background_colored
-        masks = np.concatenate([log_backgroung, log_square, log_ellipse])
+        masks = np.concatenate([log_background, log_square, log_ellipse], axis=-1)
     return imgs, masks, r
 
 '''
@@ -165,28 +166,28 @@ def plot(image, masks):
     mask1 = np.exp(masks[:, :, 0])
     mask2 = np.exp(masks[:, :, 1])
     mask3 = np.exp(masks[:, :, 2])
-    plt.subfigure(4, 2, 1):
+    plt.subfigure(4, 2, 1)
     plt.imshow(mask1, cmap='gray')
-    plt.subfigure(4, 2, 2):
+    plt.subfigure(4, 2, 2)
     plt.imshow(mask1 * image * 255)
 
-    plt.subfigure(4, 2, 3):
+    plt.subfigure(4, 2, 3)
     plt.imshow(mask2, cmap='gray')
-    plt.subfigure(4, 2, 4):
+    plt.subfigure(4, 2, 4)
     plt.imshow(mask2 * image * 255)
 
-    plt.subfigure(4, 2, 5):
+    plt.subfigure(4, 2, 5)
     plt.imshow(mask2, cmap='gray')
-    plt.subfigure(4, 2, 6):
+    plt.subfigure(4, 2, 6)
     plt.imshow(mask2 * image * 255)
 
-    plt.subfigure(4, 2, 7):
+    plt.subfigure(4, 2, 7)
     plt.imshow(image * 255)
     plt.show()
 
-plot(images[20] * 255.0)
-plot(images[30000] * 255.0)
-plot(images[400] * 255.0)
+plot(images[20], masks[20])
+plot(images[30000], masks[30000])
+plot(images[400], masks[400])
 
 print('saving...')
 print(d)
