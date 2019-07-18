@@ -47,7 +47,6 @@ class VAE(object):
         
         self.image_mean = tf.nn.sigmoid(image_mean)
 
-
     def output(self):
         return self.mean, self.log_var, self.log_mask, self.image_mean
 
@@ -108,13 +107,15 @@ class UNet(object):
                   up_inputs,
                   filters,
                   padding,
-                  scope):
+                  scope,
+                  upsampling=True):
         with tf.variable_scope(scope):
             # upsample first
-            out = layers.upsampling_2d(inputs=up_inputs,
-                                       factors=[2, 2])
+            if upsampling:
+                up_inputs = layers.upsampling_2d(inputs=up_inputs,
+                                           factors=[2, 2])
             out = layers.crop_to_fit(down_inputs=down_inputs,
-                                     up_inputs=out)
+                                     up_inputs=up_inputs)
             out = layers.conv2d(inputs=out,
                                 filters=filters,
                                 kernel_size=3,
@@ -179,10 +180,29 @@ class UNet(object):
                                             scope='down_block5')
 
         # they put a 3-layer MLP here
-        
+        shape = down_out4.get_shape().as_list()
+        H, W, C = shape[1], shape[2], shape[3]
+
+        out = layers.flatten(down_out5)
+        print('flatten shape: ', out.shape)
+        out = layers.dense(inputs=down_out5,
+                           units=128,
+                           activation=tf.nn.relu,
+                           name='layer1')
+        out = layers.dense(inputs=out,
+                           units=128,
+                           activation=tf.nn.relu,
+                           name='layer2')
+        out = layers.dense(inputs=out,
+                           units=H*W*C,
+                           activation=tf.nn.relu,
+                           name='layer3')
+        out = tf.reshape(out, shape=[-1, H, W, C])
+        print('upsampling input shape: ', out.shape)
+
         # upsampling path
         up_out4 = self._block_up(down_inputs=down_out4,
-                                 up_inputs=down_out5,
+                                 up_inputs=out,
                                  filters=init_filter*8,
                                  padding='SAME',
                                  scope='up_block4')
