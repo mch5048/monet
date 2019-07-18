@@ -157,7 +157,7 @@ class UNet(object):
         inputs = tf.concat([self.images, self.log_scope], axis=-1)
 
         # downsampling path
-        init_filter = 16
+        init_filter = 64
         down_out1, maxp1 = self._block_down(inputs=inputs,
                                             filters=init_filter,
                                             padding='SAME',
@@ -182,10 +182,12 @@ class UNet(object):
         # they put a 3-layer MLP here
         shape = down_out4.get_shape().as_list()
         H, W, C = shape[1], shape[2], shape[3]
-
+        print('down_out4: ', shape)
+        print('down_out5: ', down_out5.shape)
         out = layers.flatten(down_out5)
+
         print('flatten shape: ', out.shape)
-        out = layers.dense(inputs=down_out5,
+        out = layers.dense(inputs=out,
                            units=128,
                            activation=tf.nn.relu,
                            name='layer1')
@@ -205,22 +207,27 @@ class UNet(object):
                                  up_inputs=out,
                                  filters=init_filter*8,
                                  padding='SAME',
-                                 scope='up_block4')
+                                 scope='up_block4',
+                                 upsampling=False)
+        print('built up_out4...')
         up_out3 = self._block_up(down_inputs=down_out3,
                                  up_inputs=up_out4,
                                  filters=init_filter*4,
                                  padding='SAME',
                                  scope='up_block3')
+        print('built up_out3...')
         up_out2 = self._block_up(down_inputs=down_out2,
                                  up_inputs=up_out3,
                                  filters=init_filter*2,
                                  padding='SAME',
                                  scope='up_block2')
+        print('built up_out2...')
         up_out1 = self._block_up(down_inputs=down_out1,
                                  up_inputs=up_out2,
                                  filters=init_filter,
                                  padding='SAME',
                                  scope='up_block1')
+        print('built up_out1...')
 
         # final layers
         ## TODO

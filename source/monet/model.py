@@ -109,15 +109,15 @@ class MONet(object):
         print('shape of reconstructed image3: ', re_image3.shape)
 
         # prepare a dataset of 2 objects
-        var_bg = 2 * np.log(0.09)
-        var_fg = 2 * np.log(0.11)
+        logvar_bg = 2 * tf.log(0.09)
+        logvar_fg = 2 * tf.log(0.11)
 
-        ######
+        ######                          
         ### LOSSES
-        ######
+        ######                      
 
-        ###
-        # decoder NLL given mixture density
+        ###                         
+        # decoder NLL given log_mixture density
         ###
         '''
         log_sum_mask = tf.log(tf.exp(log_mask1) + tf.exp(log_mask2) + tf.exp(log_mask3))
@@ -130,15 +130,20 @@ class MONet(object):
         # re_image = pixel_wise means of a gaussian distribution
         # first loss is negative log likelihood of mixture density
         # x = [N, H, W, C], mu = [N, H, W, C] (should be, but check), var is scalar
-        log_mixture1 = log_mask1 + log_gaussian(x=next_element, mu=re_image1, logvar=var_bg)
-        log_mixture2 = log_mask2 + log_gaussian(x=next_element, mu=re_image2, logvar=var_fg)
-        log_mixture3 = log_mask3 + log_gaussian(x=next_element, mu=re_image3, logvar=var_fg)
+        lg1 = log_gaussian(x=next_element, mu=re_image1, logvar=var_bg)
+        lg2 = log_gaussian(x=next_element, mu=re_image2, logvar=var_fg)
+        lg3 = log_gaussian(x=next_element, mu=re_image3, logvar=var_fg)
+        log_mixture1 = log_mask1 + lg1
+        log_mixture2 = log_mask2 + lg2
+        log_mixture3 = log_mask3 + lg3
 
-        # nll_nixture = [N, H, W, C]
-        nll_mixture = tf.log(tf.exp(log_mixture1) + tf.exp(log_mixture2) + tf.exp(log_mixture3) + 1e-10)
+        # nll_mixture = [N, H, W, C]
+        self.s_exp = tf.exp(log_mixture1) + tf.exp(log_mixture2) + tf.exp(log_mixture3)
+
+        nll_mixture = -tf.log(self.s_exp)
         # reduce_nll_mixture = [N, 1]
         # not reduce_mean, reduce_sum
-        self.nll_mixture = -tf.reduce_sum(nll_mixture, axis=[1, 2, 3])
+        self.nll_mixture = tf.reduce_sum(nll_mixture, axis=[1, 2, 3])
 
         ###
         # KL divergence of factorized latent with beta
@@ -155,7 +160,6 @@ class MONet(object):
 
         mean_K = var_K * ((tf.exp(-log_var1) * mean_1) + (tf.exp(-log_var2) * mean_2) + (tf.exp(-log_var3) * mean_3))
         self.kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
-        
         '''
         
         # the above formulation is correct but unfortunately not for this.
@@ -220,12 +224,13 @@ class MONet(object):
 
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
-            nll, lat, att = None, None, None
+            nll, lat, att, m = None, None, None, None
 
             for i in range(n_run):
                 try:
-                    m, p, im, nll, lat, att, l, _ = sess.run([self.mask_total, self.predictions, self.datapipe.next_images, self.nll_mixture, self.kl_latent, self.kl_attention, self.loss, self.train_op])
+                    m, p, nll, lat, att, l, _ = sess.run([self.mask_total, self.predictions, self.nll_mixture, self.kl_latent, self.kl_attention, self.loss, self.train_op])
                     epoch_loss.append(l)
+                    
                     # print(np.mean(total, 0))
                     '''
                     for j, ls in enumerate(log_add):
@@ -272,7 +277,8 @@ class MONet(object):
                     print('nll: ', nll, 'nll.shape: ', nll.shape)
                     print('lat: ', lat, 'lat.shape: ', lat.shape)
                     print('att: ', att, 'att.shape: ', att.shape)
-                    
+                    print('mask_total: ', np.sum(m - 1.0))
+
                     if not(n_epoch % 5):
                         name = 'epoch_{}.ckpt'.format(n_epoch)
                         path = os.path.join(save_path, name)
