@@ -232,13 +232,26 @@ class MONet(object):
                     '''
                     
                     if not (i % 1000):
-                        plt.subplot(4, 1, 1)
+                        print(p[0][0].shape)
+                        plt.subplot(4, 3, 1)
                         plt.imshow(np.exp(p[0][0]) * p[1][0] * 255)
-                        plt.subplot(4, 1, 2)
+                        plt.subplot(4, 3, 2)
+                        plt.imshow(p[1][0] * 255)
+                        plt.subplot(4, 3, 3)
+                        plt.imshow(np.exp(np.squeeze(p[0][0])), cmap='gray')
+                        plt.subplot(4, 3, 4)
                         plt.imshow(np.exp(p[2][0]) * p[3][0] * 255)
-                        plt.subplot(4, 1, 3)
+                        plt.subplot(4, 3, 5)
+                        plt.imshow(p[3][0] * 255)
+                        plt.subplot(4, 3, 6)
+                        plt.imshow(np.exp(np.squeeze(p[2][0])), cmap='gray')
+                        plt.subplot(4, 3, 7)
                         plt.imshow(np.exp(p[4][0]) * p[5][0] * 255)
-                        plt.subplot(4, 1, 4)
+                        plt.subplot(4, 3, 8)
+                        plt.imshow(p[5][0] * 255)
+                        plt.subplot(4, 3, 9)
+                        plt.imshow(np.exp(np.squeeze(p[4][0])), cmap='gray')
+                        plt.subplot(4, 3, 11)
                         plt.imshow(im[0] * 255)
                         plt.show()
                         
@@ -250,12 +263,6 @@ class MONet(object):
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
-                    plt.subplot(2, 1, 1)
-                    plt.imshow(rec * 255)
-                    plt.subplot(2, 1, 2)
-                    plt.imshow(original * 255)
-                    plt.show() 
-                    
                     print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))
                     
                     if not(n_epoch % 5):
