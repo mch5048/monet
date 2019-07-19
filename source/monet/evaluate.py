@@ -48,10 +48,12 @@ def train(network_specs,
 
     for i in range(re_image_mean[0].shape[0]):
         for k in range(rows):
-            r_i, r_m, m = re_image_mean[k][i], re_log_softmax[k][i], log_masks[k][i]
+            r_i, r_m, m = re_image_mean[k][i] * 255, re_log_softmax[k][i], log_masks[k][i]
 
             print('max, min: ', np.max(r_i), np.min(r_i))
             re_masked = np.repeat(np.exp(r_m), 3, 2) * r_i
+            exp_m = np.exp(m)
+            print('exp_m max, min: ', np.max(exp_m), np.min(exp_m), exp_m.shape)
             masked = np.repeat(np.exp(m), 3, 2) * r_i
 
             plt.subplot(rows+1, cols, cols*k+1)
