@@ -20,6 +20,7 @@ class MONet(object):
         self.network_specs = network_specs
 
         self.beta, self.gamma = 0.5, 0.5
+        self.k_steps = 5
 
         self.lr = training_params['lr']
 
@@ -32,7 +33,7 @@ class MONet(object):
         self.saver = tf.train.Saver()
  
         # config for session    
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.49,
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.69,
                                     allow_growth=True)
 
         self.config = tf.ConfigProto(gpu_options=gpu_options,
@@ -41,168 +42,73 @@ class MONet(object):
                                      allow_soft_placement=True)
 
     def _build_graph(self):
-        next_element = self.datapipe.next_images
-        ###
-        # step 1
-        ###
-        H, W = self.datapipe.images.shape[1], self.datapipe.images.shape[2]
-        log_scope0 = tf.convert_to_tensor(np.zeros((16, H, W, 1)).astype(np.float32))
-
-        attention_net1 = UNet(network_specs=self.network_specs['unet'],
-                              images=next_element,
-                              log_scope=log_scope0)
-        log_mask1, log_scope1 = attention_net1.output()
-        log_max1, log_neg1 = attention_net1.additional_output()
- 
-        component_vae1 = VAE(network_specs=self.network_specs['vae'],
-                             images=next_element,
-                             log_mask=log_mask1)
-        mean_1, log_var1, log_re_mask1, re_image1 = component_vae1.output()
-
-        ###
-        # step 2
-        ###
-        attention_net2 = UNet(network_specs=self.network_specs['unet'],
-                              images=next_element,
-                              log_scope=log_scope1,
-                              reuse=True)
-
-        log_mask2, log_scope2 = attention_net2.output()
-        log_max2, log_neg2 = attention_net2.additional_output()
-
-        component_vae2 = VAE(network_specs=self.network_specs['vae'], 
-                             images=next_element,
-                             log_mask=log_mask2,
-                             reuse=True)
-        mean_2, log_var2, log_re_mask2, re_image2 = component_vae2.output()
-
-        ###
-        # step 3
-        ###
-        '''
-        attention_net3 = UNet(network_specs=self.network_specs['unet'],
-                              inputs=self.images_ph,
-                              log_scope=log_scope2,
-                              reuse=True)
-        log_mask3, log_scope3 = attention_net3.output()
-        '''
-
-        # this is only here for clarity
-        log_mask3 = log_scope2
-        component_vae3 = VAE(network_specs=self.network_specs['vae'], 
-                             images=next_element,
-                             log_mask=log_mask3,
-                             reuse=True)
-        mean_3, log_var3, log_re_mask3, re_image3 = component_vae3.output()
-
-        '''
-        self.get_log_scope = [log_scope0, log_scope1, log_scope2]
-        self.get_log_mask = [log_mask1, log_mask2, log_mask3]
-        self.get_add = [log_max1, log_neg1, log_max2, log_neg2]
-        '''
-
-        self.mask_total = tf.exp(log_mask1) + tf.exp(log_mask2) + tf.exp(log_mask3)
-
-        # shape check
-        print('shape of reconstructed image3: ', re_image1.shape)
-        print('shape of reconstructed image3: ', re_image2.shape)
-        print('shape of reconstructed image3: ', re_image3.shape)
-
-        # prepare a dataset of 2 objects
         logvar_bg = 2 * tf.log(0.09)
         logvar_fg = 2 * tf.log(0.11)
 
-        ######                          
-        ### LOSSES
-        ######                      
+        batch_size = self.datapipe.batch_size
+        H, W = self.datapipe.images.shape[1], self.datapipe.images.shape[2]
+        log_s_k = tf.convert_to_tensor(np.zeros((batch_size, H, W, 1)).astype(np.float32))
 
-        ###                         
-        # decoder NLL given log_mixture density
-        ###
-        '''
-        log_sum_mask = tf.log(tf.exp(log_mask1) + tf.exp(log_mask2) + tf.exp(log_mask3))
-        log_mask1 = log_mask1 - log_sum_mask
-        log_mask2 = log_mask2 - log_sum_mask
-        log_mask3 = log_mask3 - log_sum_mask
-        '''
+        self.loss_RE = 0
+        self.loss_KL = 0
+        log_masks = []
+        re_masks = []
 
-        # log_mask = pixel_wise logits p of categorical distribution from attention masks 
-        # re_image = pixel_wise means of a gaussian distribution
-        # first loss is negative log likelihood of mixture density
-        # x = [N, H, W, C], mu = [N, H, W, C] (should be, but check), var is scalar
-        lg1 = log_gaussian(x=next_element, mu=re_image1, logvar=var_bg)
-        lg2 = log_gaussian(x=next_element, mu=re_image2, logvar=var_fg)
-        lg3 = log_gaussian(x=next_element, mu=re_image3, logvar=var_fg)
-        log_mixture1 = log_mask1 + lg1
-        log_mixture2 = log_mask2 + lg2
-        log_mixture3 = log_mask3 + lg3
+        next_element = self.datapipe.next_images
 
-        # nll_mixture = [N, H, W, C]
-        self.s_exp = tf.exp(log_mixture1) + tf.exp(log_mixture2) + tf.exp(log_mixture3)
+        attention = UNet(network_specs=self.network_specs['unet'])
+        component_vae = VAE(network_specs=self.network_specs['vae'])
+        # summarizer = Summarizer()
 
-        nll_mixture = -tf.log(self.s_exp)
-        # reduce_nll_mixture = [N, 1]
-        # not reduce_mean, reduce_sum
-        self.nll_mixture = tf.reduce_sum(nll_mixture, axis=[1, 2, 3])
+        self.re_image_means = []
+        epsilon = 1e-10
 
-        ###
-        # KL divergence of factorized latent with beta
-        ###
+        for k in range(self.k_steps):
+            reuse = not(k == 0)
+            log_a_k = attention(images=next_element,
+                                log_scope=log_s_k,
+                                reuse=reuse)
+            log_m_k = log_a_k + log_s_k
+            log_s_k = tf.log(1.0 - tf.exp(log_a_k) + epsilon) + log_s_k
 
-        '''
-        # inv_var_K = sum(inv_var_k) -> sum(exp(-log_var)  
-        # [N, l] where l is the latent dim, we can do those operations because diagonal covariance matrix
-        inv_var_K = tf.exp(-log_var1) + tf.exp(-log_var2) + tf.exp(-log_var3)
-        # not to allow for division by zero
-        epsilon = 1e-6
-        var_K = 1.0 / (inv_var_K + epsilon)
-        log_var_K = -tf.log(inv_var_K)
+            # i forgot this step, and because of that sum_k log_m_k does not add up to 1
+            if k == (self.k_steps - 1):
+                log_m_k = log_s_k
 
-        mean_K = var_K * ((tf.exp(-log_var1) * mean_1) + (tf.exp(-log_var2) * mean_2) + (tf.exp(-log_var3) * mean_3))
-        self.kl_latent = self.beta * kl_divergence(mu=mean_K, logvar=log_var_K)
-        '''
+            z_mean_k, z_logvar_k, re_m_k, re_image_mean_k = component_vae(images=next_element,
+                                                                          log_mask=log_m_k,
+                                                                          reuse=reuse)
+            self.re_image_means.append(re_image_mean_k)
+
+            logvar = logvar_bg if reuse else logvar_fg
+            log_mixture = log_m_k + log_gaussian(x=next_element, mean=re_image_mean_k, logvar=logvar)
+            self.loss_RE += tf.exp(log_mixture)
+
+            self.loss_KL += kl_divergence(mu=z_mean_k, logvar=z_logvar_k)
+
+            log_masks.append(log_m_k)
+            re_masks.append(re_m_k)
+
+        self.loss_RE = tf.reduce_sum(-tf.log(self.loss_RE + epsilon)) / batch_size
+        tf.summary.scalar('loss_RE', self.loss_RE)
+
+        self.loss_KL = self.beta * tf.reduce_sum(self.loss_KL) / batch_size
+        tf.summary.scalar('loss_KL', self.loss_KL)
         
-        # the above formulation is correct but unfortunately not for this.
-        # try both of the formulation to see different results though
-        kl1 = kl_divergence(mu=mean_1, logvar=log_var1)
-        kl2 = kl_divergence(mu=mean_2, logvar=log_var2)
-        kl3 = kl_divergence(mu=mean_3, logvar=log_var3)
-        self.kl_latent = self.beta * (kl1 + kl2 + kl3)
+        re_masks = tf.convert_to_tensor(re_masks)
+        log_masks = tf.convert_to_tensor(log_masks)
+
+        self.re_log_soft_masks = tf.nn.log_softmax(re_masks, axis=0)
+
+        # another bug here: typed re_log_masks instead of re_log_soft_masks
+        loss_ATT = tf.multiply(tf.exp(log_masks), log_masks - self.re_log_soft_masks)
         
-        ###
-        # attention mask loss
-        ###
-
-        # this is my interpretation of d_kl between attention masks parameterizing categorical distribution
-        # produced from attention_net and recounstructed from vae
-
-        ## might need to use concat and log_softmax
-        ## this might not produce 
-        log_sum = tf.log(tf.exp(log_re_mask1) + tf.exp(log_re_mask2) + tf.exp(log_re_mask3))
-        log_softmax1 = log_re_mask1 - log_sum
-        log_softmax2 = log_re_mask2 - log_sum
-        log_softmax3 = log_re_mask3 - log_sum
-
-        self.predictions = [log_softmax1,
-                            re_image1,
-                            log_softmax2,
-                            re_image2,
-                            log_softmax3,
-                            re_image3,
-                            next_element]
-
-        # we should create a probability distribution from log_re_mask1, log_re_mask2, log_re_mask3
-        # using pixel-wise categorical distribution
-        phi1 = tf.exp(log_mask1) * (log_mask1 - log_softmax1)
-        phi2 = tf.exp(log_mask2) * (log_mask2 - log_softmax2)
-        phi3 = tf.exp(log_mask3) * (log_mask3 - log_softmax3)
-
-        # kl_attention = [N, 1]
-        # again not reduce_mean, reduce_sum
-        self.kl_attention = self.gamma * tf.reduce_sum(phi1 + phi2 + phi3, axis=[1, 2, 3])
-
-        self.loss = tf.reduce_mean(self.nll_mixture + self.kl_latent + self.kl_attention)
-
+        self.loss_ATT = self.gamma * tf.reduce_sum(loss_ATT) / batch_size
+        tf.summary.scalar('loss_ATT', self.loss_ATT)
+        
+        self.loss = self.loss_RE + self.loss_KL + self.loss_ATT
+        tf.summary.scalar('loss', self.loss)
+        
         optimizer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
@@ -224,60 +130,17 @@ class MONet(object):
 
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
-            nll, lat, att, m = None, None, None, None
 
             for i in range(n_run):
                 try:
-                    m, p, nll, lat, att, l, _ = sess.run([self.mask_total, self.predictions, self.nll_mixture, self.kl_latent, self.kl_attention, self.loss, self.train_op])
+                    l, _ = sess.run([self.loss, self.train_op])
                     epoch_loss.append(l)
-                    
-                    # print(np.mean(total, 0))
-                    '''
-                    for j, ls in enumerate(log_add):
-                        print('log_max/neg{}: '.format(np.ceil(j/2)), np.squeeze(np.exp(ls[0])), ls.shape)
-                    for j, ls in enumerate(log_s):
-                        print('log_scope_{}: '.format(j), np.squeeze(ls[0]), ls.shape)
-                    for j, lm in enumerate(log_m):
-                        print('log_mask_{}: '.format(j+1), np.squeeze(lm[0]), lm.shape)
-                    print('there is inf: ', np.argmax(r < 9e-37))
-                    if not (i % 1000):
-                        print(np.sum(m - 1.0))
-                        print(p[0][0].shape)
-                        plt.subplot(4, 3, 1)
-                        plt.imshow(np.exp(p[0][0]) * p[1][0] * 255)
-                        plt.subplot(4, 3, 2)
-                        plt.imshow(p[1][0] * 255)
-                        plt.subplot(4, 3, 3)
-                        plt.imshow(np.exp(np.squeeze(p[0][0])), cmap='gray')
-                        plt.subplot(4, 3, 4)
-                        plt.imshow(np.exp(p[2][0]) * p[3][0] * 255)
-                        plt.subplot(4, 3, 5)
-                        plt.imshow(p[3][0] * 255)
-                        plt.subplot(4, 3, 6)
-                        plt.imshow(np.exp(np.squeeze(p[2][0])), cmap='gray')
-                        plt.subplot(4, 3, 7)
-                        plt.imshow(np.exp(p[4][0]) * p[5][0] * 255)
-                        plt.subplot(4, 3, 8)
-                        plt.imshow(p[5][0] * 255)
-                        plt.subplot(4, 3, 9)
-                        plt.imshow(np.exp(np.squeeze(p[4][0])), cmap='gray')
-                        plt.subplot(4, 3, 11)
-                        plt.imshow(im[0] * 255)
-                        plt.show()
-                        
-                        print('nll: ', nll, 'nll.shape: ', nll.shape)
-                        print('lat: ', lat, 'lat.shape: ', lat.shape)
-                        print('att: ', att, 'att.shape: ', att.shape)
-                        '''
+
                 except tf.errors.OutOfRangeError:
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
                     print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))                        
-                    print('nll: ', nll, 'nll.shape: ', nll.shape)
-                    print('lat: ', lat, 'lat.shape: ', lat.shape)
-                    print('att: ', att, 'att.shape: ', att.shape)
-                    print('mask_total: ', np.sum(m - 1.0))
 
                     if not(n_epoch % 5):
                         name = 'epoch_{}.ckpt'.format(n_epoch)
@@ -308,4 +171,4 @@ class MONet(object):
             sess.run(self.datapipe.initializer, 
                      feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
-            return sess.run(self.predictions)
+            return sess.run([self.re_image_means, self.re_log_soft_masks, self.datapipe.next_images])

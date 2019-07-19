@@ -13,7 +13,7 @@ class DataPipeline(object):
             data = np.load(image_path)
             images = data['imgs']
 
-        print(images.shape)
+        print(images.shape, np.max(images), np.min(images))
         # we will be using colored images
         # images = np.expand_dims(images, axis=-1)
 
@@ -24,8 +24,8 @@ class DataPipeline(object):
         
         print('begin: complete shuffling...')
         np.random.shuffle(idx)
-        self.images = images[idx]
-
+        images = images[idx]
+        self.images = images
         print(self.images.shape)
         print('end: complete shuffling...')
         

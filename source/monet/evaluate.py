@@ -37,28 +37,19 @@ def train(network_specs,
  HERE WE GO
 =============
 ''')
-    p = model.evaluate(ckpt_path=ckpt_path)
-    for i in range(p[0].shape[0]):
-        plt.subplot(4, 3, 1)
-        plt.imshow(np.exp(p[0][i]) * p[1][i] * 255)
-        plt.subplot(4, 3, 2)
-        plt.imshow(p[1][i] * 255)
-        plt.subplot(4, 3, 3)
-        plt.imshow(np.exp(np.squeeze(p[0][i])), cmap='gray')
-        plt.subplot(4, 3, 4)
-        plt.imshow(np.exp(p[2][i]) * p[3][i] * 255)
-        plt.subplot(4, 3, 5)
-        plt.imshow(p[3][i] * 255)
-        plt.subplot(4, 3, 6)
-        plt.imshow(np.exp(np.squeeze(p[2][i])), cmap='gray')
-        plt.subplot(4, 3, 7)
-        plt.imshow(np.exp(p[4][i]) * p[5][i] * 255)
-        plt.subplot(4, 3, 8)
-        plt.imshow(p[5][i] * 255)
-        plt.subplot(4, 3, 9)
-        plt.imshow(np.exp(np.squeeze(p[4][i])), cmap='gray')
-        plt.subplot(4, 3, 11)
-        plt.imshow(p[6][i] * 255)
+    re_image_mean, re_log_softmax, next_images = model.evaluate(ckpt_path=ckpt_path)
+    rows = len(re_image_mean)
+    cols = 3
+    
+    for i in range(re_image_mean[0].shape[0]):
+        for k in range(rows):
+            r_i, r_m = re_image_mean[k][i], re_log_softmax[k][i]
+            plt.subplot(rows, cols, 3*k+1)
+            plt.imshow(np.exp(r_m) * r_i * 255)
+            plt.subplot(rows, cols, 3*k+2)
+            plt.imshow(r_i * 255)
+            plt.subplot(rows, cols, 3*k+3)
+            plt.imshow(np.exp(np.squeeze(r_m)), cmap='gray')
         plt.show()
 
 if __name__ == '__main__':
@@ -79,7 +70,7 @@ if __name__ == '__main__':
     save_path = None
 
     # ckpt path to continue training or to evaluate
-    ckpt_path = 'source/monet/tmp/epoch_30.ckpt'
+    ckpt_path = 'source/monet/tmp/epoch_15.ckpt'
 
     train(network_specs=network_specs,
           training_params=training_params,

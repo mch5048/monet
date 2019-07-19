@@ -32,7 +32,7 @@ ellipses = images[elems:2*elems]
 heart = images[2*elems:]
 
 # number of examples to create
-N = 5e4
+N = 2e4
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
@@ -48,32 +48,27 @@ def random_selector():
     l_e = ellipses[idx_e]
     l_s = np.expand_dims(l_s, -1)
     l_e = np.expand_dims(l_e, -1)
-
-    # print('l_s shape: ', l_s.shape)
-    s_idx = np.nonzero(l_s)
-    e_idx = np.nonzero(l_e)
     
     tmp = l_s + l_e
     # print('tmp shape:', tmp.shape)
 
     tmp[tmp > 0.5] = 1.0
-    b_idx = np.nonzero(1.0 - tmp)
 
     # print('background transpose: ', np.transpose(b_idx).shape)
-    background = np.ones((64, 64, 3))
-    background[b_idx] = 0.0
-    # print('background is ready')
+    background = np.ones((64, 64, 1))
+    background[tmp > 0.5] = 0.0
 
     front = np.random.uniform()
     if front < 0.5:
         # square is on the front
-        l_e[s_idx] = 0.0
+        l_e[l_s > 0.5] = 0.0
     else:
         # ellipse is on the front
-        l_s[e_idx] = 0.0
+        l_s[l_e > 0.5] = 0.0
 
     l_s = np.repeat(l_s, 3, axis=2)
     l_e = np.repeat(l_e, 3, axis=2)
+    background = np.repeat(background, 3, axis=2)
 
     # random coloring
     c_s = np.random.uniform(size=3)
@@ -87,8 +82,8 @@ def random_selector():
     c = np.random.uniform()
     r = 't'
     # with p=0.10 only one square, p=0.10 only one ellipse
-    zeros = np.zeros((64, 64, 1))
 
+    '''
     if c < 0.10:
         r = 's'
         imgs = l_s + background
@@ -97,44 +92,10 @@ def random_selector():
         imgs = l_e + background
     else:
         imgs = l_s + l_e + background
+    '''
+    imgs = l_s + l_e + background
+    print(np.max(imgs), np.max(l_s), np.max(l_e), np.max(background))
     return imgs, r
-
-'''
-def random_selector(select_from1, select_from2, lb='mixed'):
-    # squares
-    image1_id = int(elems * np.random.uniform())
-    image2_id = int(elems * np.random.uniform())
-
-    image1, image2 = select_from1[image1_id], select_from2[image2_id]
-    image = image1 + image2
-    image[image > 0.5] = 1.0
-    image_label = np.expand_dims(image, -1)
-    zeros = np.zeros(image_label.shape)
-    if lb == 'squares':
-        label = np.concatenate([image_label, zeros], -1)
-    elif lb == 'ellipses':
-        label = np.concatenate([zeros, image_label], -1)
-    else:
-        label = np.concatenate([np.expand_dims(image1, -1), np.expand_dims(image2, -1)], -1)    
-    return image, label
-
-print('creating...')
-for i in range(N_same):
-    c = np.random.uniform()
-    if c < 0.5:
-        im, l = random_selector(squares, squares, lb='squares')
-
-    else:
-        # ellipses
-        im, l = random_selector(ellipses, ellipses, lb='ellipses')    
-    images.append(im)
-    labels.append(l)
-
-for i in range(N_mixed):
-    im, l = random_selector(squares, ellipses)
-    images.append(im)
-    labels.append(l)
-'''
 
 for i in range(int(N)):
     im, r = random_selector()
@@ -144,19 +105,12 @@ for i in range(int(N)):
 images = np.array(images) 
 
 images = images.astype(np.float32)
-print(images.shape)
+print(images.shape, np.max(images), np.min(images))
 
-plt.imshow(images[20] * 255.0)
-plt.show()
-
-plt.imshow(images[30000] * 255.0)
-plt.show()
-
-plt.imshow(images[400] * 255.0)
-plt.show()
-
-plt.imshow(images[1000] * 255.0)
-plt.show()
+idx = [i for i in range(10)]
+for i in idx:
+    plt.imshow(images[i] * 255.0)
+    plt.show()
 
 print('saving...')
 print(d)

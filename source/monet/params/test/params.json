@@ -1,5 +1,5 @@
 {
     "lr" : 1e-4,
     "batch_size": 16,
-    "iterations": 4e6
+    "iterations": 1e6
 }

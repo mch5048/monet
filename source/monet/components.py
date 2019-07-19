@@ -6,68 +6,66 @@ from source.misc import sampler_normal
 class VAE(object):
     def __init__(self,
                  network_specs,
-                 images,
-                 log_mask,
                  scope='component_vae',
-                 mode='training',
-                 reuse=False):
+                 mode='training'):
 
         self.network_specs = network_specs
-        self.images = images
-        self.log_mask = log_mask
-        
-        with tf.variable_scope(scope, reuse=reuse):
-            self._build_graph()
+        self.scope = scope
 
-    def _build_graph(self):
-        inputs = tf.concat([self.images, self.log_mask], axis=-1)
-        z_samples = self._build_encoder(inputs)
-        self._build_decoder(z_samples)
+    def __call__(self,
+                 images,
+                 log_mask,
+                 reuse):
+
+        with tf.variable_scope(self.scope, reuse=reuse):
+            return self._build_graph(images, log_mask)
+        
+    def _build_graph(self, images, log_mask):
+        inputs = tf.concat([images, log_mask], axis=-1)
+        z_mean, z_logvar, z_samples = self._build_encoder(inputs)
+        log_mask, image_mean = self._build_decoder(z_samples)
+        return z_mean, z_logvar, log_mask, image_mean
 
     def _build_encoder(self, inputs):
         encoder = build_network(inputs=inputs,
                                 model_specs=self.network_specs['encoder'],
                                 latent_dim=self.network_specs['latent_dim'],
                                 name='encoder')
-        self.mean, self.log_var = tf.split(encoder, 
-                                           [self.network_specs['latent_dim'], self.network_specs['latent_dim']], 
-                                           axis=1)
-        z_samples = sampler_normal(self.mean, 
-                                   self.log_var)
-        return z_samples
+        z_mean, z_logvar = tf.split(encoder, 
+                                    [self.network_specs['latent_dim'], self.network_specs['latent_dim']], 
+                                    axis=1)
+        z_samples = sampler_normal(z_mean, 
+                                   z_logvar)
+        return z_mean, z_logvar, z_samples
 
     def _build_decoder(self, inputs):
         logits = build_network(inputs=inputs,
                                model_specs=self.network_specs['decoder'],
                                num_channel=self.network_specs['num_channel'],
                                name='decoder')
-        self.log_mask, image_mean = tf.split(logits,
-                                             [1, 3],
-                                             axis=-1)
+        log_mask, image_mean = tf.split(logits,
+                                        [1, 3],
+                                        axis=-1)
+        return log_mask, image_mean
         
-        self.image_mean = tf.nn.sigmoid(image_mean)
-
-    def output(self):
-        return self.mean, self.log_var, self.log_mask, self.image_mean
-
 class UNet(object):
     def __init__(self,
                  network_specs,
-                 images,
-                 log_scope,
                  scope='unet',
-                 mode='training',
-                 reuse=False):
+                 mode='training'):
 
         # network specs
         self.network_specs = network_specs
+        self.scope = scope
         self.mode = mode
 
-        self.images = images
-        self.log_scope = log_scope
 
-        with tf.variable_scope(scope, reuse=reuse):
-            self._build_graph()
+    def __call__(self,
+                 images,
+                 log_scope,
+                 reuse):
+        with tf.variable_scope(self.scope, reuse=reuse):
+            return self._build_graph(images, log_scope)
 
     # THIS FUNCTIONS WILL BE REMOVED
     # _block_down and _block_up
@@ -140,7 +138,7 @@ class UNet(object):
     # changed padding from 'VALID' to 'SAME' to obtain the same output shape
     # we will be testing unet segmentation on dspirites
     # THEN: we will factorize using .json
-    def _build_graph(self):
+    def _build_graph(self, images, log_scope):
         '''
         # initial log scope
         if self.log_scope is None:
@@ -154,10 +152,10 @@ class UNet(object):
                                              trainable=False)
         '''
 
-        inputs = tf.concat([self.images, self.log_scope], axis=-1)
+        inputs = tf.concat([images, log_scope], axis=-1)
 
         # downsampling path
-        init_filter = 64
+        init_filter = 16
         down_out1, maxp1 = self._block_down(inputs=inputs,
                                             filters=init_filter,
                                             padding='SAME',
@@ -246,23 +244,15 @@ class UNet(object):
         shape = tf.shape(logits)
         N, H, W, C = shape[0], shape[1], shape[2], shape[3]
         print('logits shape before: ', shape)
-        logits = tf.reshape(tf.transpose(logits, [0, 3, 1, 2]), [N * C, H * W])
+        # logits = tf.reshape(tf.transpose(logits, [0, 3, 1, 2]), [N * C, H * W])
+        logits = layers.flatten(logits)
         print('logits shape: ', logits.shape)
 
         log_softmax = tf.nn.log_softmax(logits=logits,
                                         axis=-1)
-        log_neg = tf.log(1.0 - tf.exp(log_softmax))
+        # log_neg = tf.log(tf.clip_by_value(1.0 - tf.exp(log_softmax), 1e-20, 1e10))
 
-        self.log_softmax = tf.transpose(tf.reshape(log_softmax, [N, C, H, W]), [0, 2, 3, 1])
-        self.log_neg = tf.transpose(tf.reshape(log_neg, [N, C, H, W]), [0, 2, 3, 1])
-
-        print('log_softmax shape: ', self.log_softmax.shape)
-        print('log_neg shape: ', self.log_neg.shape)
-
-    def output(self):
-        log_mask = self.log_scope + self.log_softmax
-        log_scope = self.log_scope + self.log_neg
-        return log_mask, log_scope
-
-    def additional_output(self):
-        return self.log_softmax, self.log_neg
+        # self.log_softmax = tf.transpose(tf.reshape(log_softmax, [N, C, H, W]), [0, 2, 3, 1])
+        log_a_k = tf.reshape(log_softmax, [N, H, W, C])
+        print('log_softmax shape: ', log_a_k.shape)
+        return log_a_k
