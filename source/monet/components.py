@@ -23,8 +23,8 @@ class VAE(object):
     def _build_graph(self, images, log_mask):
         inputs = tf.concat([images, log_mask], axis=-1)
         z_mean, z_logvar, z_samples = self._build_encoder(inputs)
-        log_mask, image_mean = self._build_decoder(z_samples)
-        return z_mean, z_logvar, log_mask, image_mean
+        re_mask, re_image_mean = self._build_decoder(z_samples)
+        return z_mean, z_logvar, re_mask, re_image_mean
 
     def _build_encoder(self, inputs):
         encoder = build_network(inputs=inputs,
@@ -43,10 +43,10 @@ class VAE(object):
                                model_specs=self.network_specs['decoder'],
                                num_channel=self.network_specs['num_channel'],
                                name='decoder')
-        log_mask, image_mean = tf.split(logits,
-                                        [1, 3],
-                                        axis=-1)
-        return log_mask, image_mean
+        re_mask, re_image_mean = tf.split(logits,
+                                          [1, 3],
+                                          axis=-1)
+        return re_mask, re_image_mean
         
 class UNet(object):
     def __init__(self,
@@ -58,7 +58,6 @@ class UNet(object):
         self.network_specs = network_specs
         self.scope = scope
         self.mode = mode
-
 
     def __call__(self,
                  images,
@@ -240,19 +239,15 @@ class UNet(object):
                                name='final_layer')
 
         # compute log_softmax for the current attention
-        # CAVEAT = axis[1, 2], changed it
         shape = tf.shape(logits)
         N, H, W, C = shape[0], shape[1], shape[2], shape[3]
         print('logits shape before: ', logits.shape)
-        # logits = tf.reshape(tf.transpose(logits, [0, 3, 1, 2]), [N * C, H * W])
         logits = layers.flatten(logits)
         print('logits shape: ', logits.shape)
 
         log_softmax = tf.nn.log_softmax(logits=logits,
                                         axis=-1)
-        # log_neg = tf.log(tf.clip_by_value(1.0 - tf.exp(log_softmax), 1e-20, 1e10))
 
-        # self.log_softmax = tf.transpose(tf.reshape(log_softmax, [N, C, H, W]), [0, 2, 3, 1])
         log_a_k = tf.reshape(log_softmax, [N, H, W, C])
         print('log_softmax shape: ', log_a_k.shape)
         return log_a_k

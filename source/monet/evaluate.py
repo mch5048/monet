@@ -38,19 +38,34 @@ def train(network_specs,
  HERE WE GO
 =============
 ''')
-    re_image_mean, re_log_softmax, next_images = model.evaluate(ckpt_path=ckpt_path)
+    re_image_mean, re_log_softmax, next_images, log_masks = model.evaluate(ckpt_path=ckpt_path)
     rows = len(re_image_mean)
-    cols = 3
+    cols = 5
     
+    # log_masks [5, 16, 64, 64, 1]
+    for k in range(rows):
+        print(np.mean(np.sum(np.exp(log_masks[:, k, :, :]), 0)))
+
     for i in range(re_image_mean[0].shape[0]):
         for k in range(rows):
-            r_i, r_m = re_image_mean[k][i], re_log_softmax[k][i]
-            plt.subplot(rows, cols, 3*k+1)
-            plt.imshow(np.exp(r_m) * r_i * 255)
-            plt.subplot(rows, cols, 3*k+2)
-            plt.imshow(r_i * 255)
-            plt.subplot(rows, cols, 3*k+3)
+            r_i, r_m, m = re_image_mean[k][i], re_log_softmax[k][i], log_masks[k][i]
+
+            print('max, min: ', np.max(r_i), np.min(r_i))
+            re_masked = np.repeat(np.exp(r_m), 3, 2) * r_i
+            masked = np.repeat(np.exp(m), 3, 2) * r_i
+
+            plt.subplot(rows+1, cols, cols*k+1)
+            plt.imshow(re_masked)
+            plt.subplot(rows+1, cols, cols*k+2)
+            plt.imshow(r_i)
+            plt.subplot(rows+1, cols, cols*k+3)
             plt.imshow(np.exp(np.squeeze(r_m)), cmap='gray')
+            plt.subplot(rows+1, cols, cols*k+4)
+            plt.imshow(masked)
+            plt.subplot(rows+1, cols, cols*k+5)
+            plt.imshow(np.exp(np.squeeze(m)), cmap='gray')
+        plt.subplot(rows+1, cols, (rows+1)*cols-(cols//2))
+        plt.imshow(next_images[i])
         plt.show()
 
 if __name__ == '__main__':

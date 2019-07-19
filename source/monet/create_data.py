@@ -109,7 +109,7 @@ print(images.shape, np.max(images), np.min(images))
 
 idx = [i for i in range(10)]
 for i in idx:
-    plt.imshow(images[i] * 255.0)
+    plt.imshow(images[i])
     plt.show()
 
 print('saving...')

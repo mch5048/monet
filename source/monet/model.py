@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt 
@@ -51,16 +52,20 @@ class MONet(object):
 
         self.loss_RE = 0
         self.loss_KL = 0
-        log_masks = []
-        re_masks = []
-
+        
         next_element = self.datapipe.next_images
 
         attention = UNet(network_specs=self.network_specs['unet'])
         component_vae = VAE(network_specs=self.network_specs['vae'])
         # summarizer = Summarizer()
 
+
+        # appending stuff looks cool, but they are the same
+        # deep copy
         self.re_image_means = []
+        log_masks = []
+        re_masks = []
+
         epsilon = 1e-10
 
         for k in range(self.k_steps):
@@ -71,13 +76,14 @@ class MONet(object):
             log_m_k = log_a_k + log_s_k
             log_s_k = tf.log(1.0 - tf.exp(log_a_k) + epsilon) + log_s_k
 
-            # i forgot this step, and because of that sum_k log_m_k does not add up to 1
+            # i forgot this step, and because of that sum_k(log_m_k) does not add up to 1
             if k == (self.k_steps - 1):
                 log_m_k = log_s_k
 
             z_mean_k, z_logvar_k, re_m_k, re_image_mean_k = component_vae(images=next_element,
                                                                           log_mask=log_m_k,
                                                                           reuse=reuse)
+
             self.re_image_means.append(re_image_mean_k)
 
             logvar = logvar_bg if reuse else logvar_fg
@@ -96,13 +102,12 @@ class MONet(object):
         tf.summary.scalar('loss_KL', self.loss_KL)
         
         re_masks = tf.convert_to_tensor(re_masks)
-        log_masks = tf.convert_to_tensor(log_masks)
+        self.log_masks = tf.convert_to_tensor(log_masks)
 
-        # this is probably not correct
         self.re_log_soft_masks = tf.nn.log_softmax(re_masks, axis=0)
 
         # another bug here: typed re_log_masks instead of re_log_soft_masks
-        loss_ATT = tf.multiply(tf.exp(log_masks), log_masks - self.re_log_soft_masks)
+        loss_ATT = tf.multiply(tf.exp(self.log_masks), self.log_masks - self.re_log_soft_masks)
         
         self.loss_ATT = self.gamma * tf.reduce_sum(loss_ATT) / batch_size
         tf.summary.scalar('loss_ATT', self.loss_ATT)
@@ -116,8 +121,10 @@ class MONet(object):
         self.merged = tf.summary.merge_all()
 
     def train(self, save_path, epoch=0, ckpt_path=None):
+        logs_path = 'source/monet/logs/test'
+
         with tf.Session(config=self.config) as sess:
-            writer = tf.summary.FileWriter('source/monet/logs/test', sess.graph)
+            writer = tf.summary.FileWriter(logs_path, sess.graph)
             # init ops
             if ckpt_path:
                 print('restoring {}...'.format(ckpt_path))
@@ -175,4 +182,4 @@ class MONet(object):
             sess.run(self.datapipe.initializer, 
                      feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
-            return sess.run([self.re_image_means, self.re_log_soft_masks, self.datapipe.next_images])
+            return sess.run([self.re_image_means, self.re_log_soft_masks, self.datapipe.next_images, self.log_masks])
