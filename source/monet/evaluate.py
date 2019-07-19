@@ -1,5 +1,6 @@
 import os
 import json
+import argparse
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -53,6 +54,10 @@ def train(network_specs,
         plt.show()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--epoch', type=int, default=10)
+    args = parser.parse_args()
+
     network_specs_json = 'source/monet/params/test/model.json'
     training_params_json = 'source/monet/params/test/params.json'
 
@@ -70,7 +75,7 @@ if __name__ == '__main__':
     save_path = None
 
     # ckpt path to continue training or to evaluate
-    ckpt_path = 'source/monet/tmp/epoch_15.ckpt'
+    ckpt_path = 'source/monet/tmp/epoch_{}.ckpt'.format(args.epoch)
 
     train(network_specs=network_specs,
           training_params=training_params,

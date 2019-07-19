@@ -243,7 +243,7 @@ class UNet(object):
         # CAVEAT = axis[1, 2], changed it
         shape = tf.shape(logits)
         N, H, W, C = shape[0], shape[1], shape[2], shape[3]
-        print('logits shape before: ', shape)
+        print('logits shape before: ', logits.shape)
         # logits = tf.reshape(tf.transpose(logits, [0, 3, 1, 2]), [N * C, H * W])
         logits = layers.flatten(logits)
         print('logits shape: ', logits.shape)

@@ -98,6 +98,7 @@ class MONet(object):
         re_masks = tf.convert_to_tensor(re_masks)
         log_masks = tf.convert_to_tensor(log_masks)
 
+        # this is probably not correct
         self.re_log_soft_masks = tf.nn.log_softmax(re_masks, axis=0)
 
         # another bug here: typed re_log_masks instead of re_log_soft_masks
@@ -112,8 +113,11 @@ class MONet(object):
         optimizer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
+        self.merged = tf.summary.merge_all()
+
     def train(self, save_path, epoch=0, ckpt_path=None):
         with tf.Session(config=self.config) as sess:
+            writer = tf.summary.FileWriter('source/monet/logs/test', sess.graph)
             # init ops
             if ckpt_path:
                 print('restoring {}...'.format(ckpt_path))
@@ -133,9 +137,9 @@ class MONet(object):
 
             for i in range(n_run):
                 try:
-                    l, _ = sess.run([self.loss, self.train_op])
+                    test, summary, l, _ = sess.run([self.re_log_soft_masks, self.merged, self.loss, self.train_op])
                     epoch_loss.append(l)
-
+                    writer.add_summary(summary, i)
                 except tf.errors.OutOfRangeError:
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
