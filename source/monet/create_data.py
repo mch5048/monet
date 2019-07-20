@@ -3,6 +3,7 @@ we need to create our own data
 ellipses and squares
 '''
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -32,7 +33,7 @@ ellipses = images[elems:2*elems]
 heart = images[2*elems:]
 
 # number of examples to create
-N = 2e4
+N = 5e4
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
@@ -97,9 +98,16 @@ def random_selector():
     print(np.max(imgs), np.max(l_s), np.max(l_e), np.max(background))
     return imgs, r
 
+save_path = '/home/sayvaz/Desktop/MDSprites/train'
 for i in range(int(N)):
     im, r = random_selector()
     images.append(im)
+    im = np.array(im)
+    name = 'MDSprites_{}.png'.format(i)
+    path = os.path.join(save_path, name)
+    if i == 0:
+        print(im.shape)
+    plt.imsave(path, im)
     d[r] += 1
 
 images = np.array(images) 

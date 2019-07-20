@@ -238,6 +238,8 @@ class UNet(object):
                                mode=self.mode,
                                name='final_layer')
 
+        '''
+        # log softmax DOES NOT WORK PROPERLY
         # compute log_softmax for the current attention
         shape = tf.shape(logits)
         N, H, W, C = shape[0], shape[1], shape[2], shape[3]
@@ -250,4 +252,7 @@ class UNet(object):
 
         log_a_k = tf.reshape(log_softmax, [N, H, W, C])
         print('log_softmax shape: ', log_a_k.shape)
+        '''
+
+        log_a_k = tf.log_sigmoid(logits)
         return log_a_k

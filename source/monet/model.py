@@ -1,6 +1,6 @@
 import os
-import sys
-import copy
+import time
+import subprocess
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt 
@@ -123,6 +123,23 @@ class MONet(object):
     def train(self, save_path, epoch=0, ckpt_path=None):
         logs_path = 'source/monet/logs/test'
 
+        if os.path.exists(logs_path):
+            inpt = True
+            y_n = raw_input('logs_path exists, do you want to re-create it? [y/n]')
+            
+            while inpt:
+                if y_n == 'y':
+                    subprocess.call(['rm', '-rf', logs_path])
+                    os.mkdir(logs_path)
+                    print('deleted the old folder and created a new one')
+                    inpt = False
+                elif y_n == 'n':
+                    folder_name = raw_input('type the new folder name: ')
+                    os.mkdir('source/monet/logs/{}'.format(folder_name))
+                    inpt = False
+                else:
+                    print('only y or n is accepted')
+
         with tf.Session(config=self.config) as sess:
             writer = tf.summary.FileWriter(logs_path, sess.graph)
             # init ops
@@ -142,18 +159,22 @@ class MONet(object):
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
 
+            start_time = time.time()
             for i in range(n_run):
                 try:
-                    test, summary, l, _ = sess.run([self.re_log_soft_masks, self.merged, self.loss, self.train_op])
+                    summary, l, _ = sess.run([self.merged, self.loss, self.train_op])
                     epoch_loss.append(l)
                     writer.add_summary(summary, i)
                 except tf.errors.OutOfRangeError:
+                    end_time = time.time()
+
                     sess.run(self.datapipe.initializer, 
                              feed_dict={self.datapipe.images_ph: self.datapipe.images})
 
-                    print('epoch: {}, loss: {}'.format(n_epoch, np.mean(epoch_loss)))                        
+                    print('epoch: {}, loss: {}, time: {}'.format(n_epoch, np.mean(epoch_loss), end_time - start_time))
+                    start_time = time.time()
 
-                    if not(n_epoch % 5):
+                    if not(n_epoch % 10):
                         name = 'epoch_{}.ckpt'.format(n_epoch)
                         path = os.path.join(save_path, name)
                         self.saver.save(sess, path)

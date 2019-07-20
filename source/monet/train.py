@@ -15,7 +15,7 @@ def train(network_specs,
           image_path,
           save_path,
           ckpt_path,
-          epoch=10):
+          epoch):
     
     print('creating datapipe...')
     # create images DataPipeline
