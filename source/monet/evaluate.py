@@ -46,21 +46,37 @@ def train(network_specs,
     if not batch_size:
         batch_size = re_image_mean[0].shape[0]
 
-    # log_masks [5, 16, 64, 64, 1]
+    batch_size = min(batch_size, re_image_mean[0].shape[0])
+
+    '''
+    # log_masks shape = [5, 16, 64, 64, 1]
     for k in range(rows):
         print(np.mean(np.sum(np.exp(log_masks[:, k, :, :]), 0)))
+    '''
 
     for i in range(batch_size):
         for k in range(rows):
+            print('step {}'.format(k))
             r_i, r_m, m = re_image_mean[k][i], re_log_softmax[k][i], log_masks[k][i]
-            print('max, min: ', np.max(r_i), np.min(r_i))
-            re_masked = np.repeat(np.exp(r_m), 3, 2) * r_i
+            print('re_image max, min: ', np.max(r_i), np.min(r_i))
+            
+            # re_image_mean comes as logits, changed it to tf.nn.sigmoid
+            # they must come between 0 and 1
+            '''
+            for j in range(3):
+                tmp = r_i[:, :, j]
+                r_i[:, :, j] = (tmp - np.min(tmp)) / (np.max(tmp) - np.min(tmp))
+            '''
+            exp_r_m = np.exp(r_m)
+            print('exp_r_m max, min: ', np.max(exp_r_m), np.min(exp_r_m))
+            re_masked = np.repeat(exp_r_m, 3, 2) * r_i
+            print('re_masked max, min: ', np.max(re_masked), np.min(re_masked))
             exp_m = np.exp(m)
-            exp_m_T = np.transpose(exp_m, [2, 0, 1])
-            print(exp_m_T.shape)
-            print(np.max(exp_m_T))
             print('exp_m max, min: ', np.max(exp_m), np.min(exp_m), exp_m.shape)
-            masked = np.repeat(np.exp(m), 3, 2) * r_i
+            masked = np.repeat(exp_m, 3, 2) * r_i
+            print('masked max, min: ', np.max(masked), np.min(masked))
+            print('')
+            print('')
             plt.subplot(rows+1, cols, cols*k+1)
             plt.imshow(re_masked)
             plt.subplot(rows+1, cols, cols*k+2)

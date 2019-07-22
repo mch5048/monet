@@ -46,6 +46,10 @@ class VAE(object):
         re_mask, re_image_mean = tf.split(logits,
                                           [1, 3],
                                           axis=-1)
+
+        # i think this should be trained with tf.nn.sigmoid
+        # because the means should be between 0 and 1
+        re_image_mean = tf.nn.sigmoid(re_image_mean)
         return re_mask, re_image_mean
         
 class UNet(object):
