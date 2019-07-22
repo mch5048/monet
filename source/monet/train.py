@@ -40,6 +40,7 @@ def train(network_specs,
 =============
 ''')
     model.train(save_path=save_path,
+                logs_path=logs_path,
                 ckpt_path=ckpt_path,
                 epoch=epoch)
 
@@ -48,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='tmp')
     parser.add_argument('--logs_path', type=str, default='tmp')    
     parser.add_argument('--ckpt_path', type=str, default=None)
-    parser.add_argument('--sigmoid_output', type=bool, default=False)
+    parser.add_argument('--sigmoid_output', action='store_true')
     parser.add_argument('--epoch', type=int, default=0)
     args = parser.parse_args()
 
@@ -78,4 +79,4 @@ if __name__ == '__main__':
           logs_path=logs_path,
           ckpt_path=ckpt_path,
           sigmoid_output=args.sigmoid_output,
-          epoch=0)
+          epoch=epoch)

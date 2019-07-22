@@ -21,7 +21,7 @@ class MONet(object):
 
         self.network_specs = network_specs
         self.sigmoid_output = sigmoid_output
-        
+
         self.beta, self.gamma = 0.5, 0.5
         self.k_steps = 5
 
@@ -120,10 +120,11 @@ class MONet(object):
 
         self.merged = tf.summary.merge_all()
 
-    def _warning(self, path, path_type):
+    def _warning(self, path):
+        path_type = path.split('/')[-2]
         if os.path.exists(path):
             inpt = True
-            y_n = raw_input('{}_path:{} exists, do you want to re-create it? [y/n] '.format(path_type, path))
+            y_n = raw_input('{}_path: {} exists, do you want to re-create it? [y/n] '.format(path_type, path))
             
             while inpt:
                 if y_n == 'y':
@@ -133,21 +134,19 @@ class MONet(object):
                     inpt = False
                 elif y_n == 'n':
                     folder_name = raw_input('type the new folder name: ')
-                    full_path = 'source/monet/{}/{}'.format(path_type, folder_name) 
-                    os.mkdir(full_path)
-                    print('new folder is created {}'.format(full_path))
+                    os.mkdir(path)
+                    print('new folder is created {}'.format(path))
                     inpt = False
                 else:
                     print('only y or n is accepted')
         else:
             print('{} path does not exist, creating...'.format(path_type))
-            full_path = 'source/monet/{}/{}'.format(path_type, path)
-            os.mkdir(full_path)
-            print('new folder is created {}'.format(full_path))        
+            os.mkdir(path)
+            print('new folder is created {}'.format(path))        
 
     def train(self, save_path, logs_path, epoch=0, ckpt_path=None):
-        self._warning(save_path, path_type='save')
-        self._warning(logs_path, path_type='logs')
+        self._warning(save_path)
+        self._warning(logs_path)
 
         with tf.Session(config=self.config) as sess:
             writer = tf.summary.FileWriter(logs_path, sess.graph)
@@ -167,6 +166,7 @@ class MONet(object):
 
             # n_epoch, epoch loss just out of curiosity
             n_epoch, epoch_loss = epoch + 1, []
+            print(n_run)
 
             start_time = time.time()
             for i in range(n_run):
