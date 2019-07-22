@@ -117,26 +117,34 @@ class MONet(object):
 
         self.merged = tf.summary.merge_all()
 
-    def train(self, save_path, epoch=0, ckpt_path=None, logs_path=None):
-        if not logs_path:
-            logs_path = 'source/monet/logs/test'
-
-        if os.path.exists(logs_path):
+    def _warning(self, path, path_type):
+        if os.path.exists(path):
             inpt = True
-            y_n = raw_input('logs_path exists, do you want to re-create it? [y/n]')
+            y_n = raw_input('{}_path:{} exists, do you want to re-create it? [y/n] '.format(path_type, path))
             
             while inpt:
                 if y_n == 'y':
-                    subprocess.call(['rm', '-rf', logs_path])
-                    os.mkdir(logs_path)
+                    subprocess.call(['rm', '-rf', path])
+                    os.mkdir(path)
                     print('deleted the old folder and created a new one')
                     inpt = False
                 elif y_n == 'n':
                     folder_name = raw_input('type the new folder name: ')
-                    os.mkdir('source/monet/logs/{}'.format(folder_name))
+                    full_path = 'source/monet/{}/{}'.format(path_type, folder_name) 
+                    os.mkdir(full_path)
+                    print('new folder is created {}'.format(full_path))
                     inpt = False
                 else:
                     print('only y or n is accepted')
+        else:
+            print('{} path does not exist, creating...'.format(path_type))
+            full_path = 'source/monet/{}/{}'.format(path_type, path)
+            os.mkdir(full_path)
+            print('new folder is created {}'.format(full_path))        
+
+    def train(self, save_path, logs_path, epoch=0, ckpt_path=None):
+        self._warning(save_path, path_type='save')
+        self._warning(logs_path, path_type='logs')
 
         with tf.Session(config=self.config) as sess:
             writer = tf.summary.FileWriter(logs_path, sess.graph)

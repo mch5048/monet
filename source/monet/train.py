@@ -42,7 +42,8 @@ def train(network_specs,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_path', type=str, default='source/monet/tmp/')
+    parser.add_argument('--save_path', type=str, default='tmp')
+    parser.add_argument('--logs_path', type=str, default='source/monet/logs/tmp')    
     parser.add_argument('--ckpt_path', type=str, default=None)
     parser.add_argument('--epoch', type=int, default=0)
     args = parser.parse_args()
@@ -59,9 +60,8 @@ if __name__ == '__main__':
     # load data
     image_path = 'data/monet_2object_colored_64x64_normalized.npz'
     
-    save_path = args.save_path
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
+    save_path = 'source/monet/save/{}'.format(args.save_path)
+    logs_path = 'source/monet/logs/{}'.format(args.logs_path)
 
     # ckpt path to continue training
     ckpt_path = args.ckpt_path
@@ -71,5 +71,6 @@ if __name__ == '__main__':
           training_params=training_params,
           image_path=image_path,
           save_path=save_path,
+          logs_path=logs_path,
           ckpt_path=ckpt_path,
           epoch=0)
