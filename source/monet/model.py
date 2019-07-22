@@ -14,12 +14,14 @@ class MONet(object):
                  datapipe,
                  network_specs,
                  training_params,
+                 sigmoid_output,
                  scope='monet'):
 
         self.datapipe = datapipe
 
         self.network_specs = network_specs
-
+        self.sigmoid_output = sigmoid_output
+        
         self.beta, self.gamma = 0.5, 0.5
         self.k_steps = 5
 
@@ -56,7 +58,8 @@ class MONet(object):
         next_element = self.datapipe.next_images
 
         attention = UNet(network_specs=self.network_specs['unet'])
-        component_vae = VAE(network_specs=self.network_specs['vae'])
+        component_vae = VAE(network_specs=self.network_specs['vae'],
+                            sigmoid_output=self.sigmoid_output)
         # summarizer = Summarizer()
 
         self.re_image_means = []

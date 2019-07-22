@@ -15,7 +15,9 @@ def train(network_specs,
           training_params,
           image_path,
           save_path,
+          logs_path,
           ckpt_path,
+          sigmoid_output,
           epoch):
     
     print('creating datapipe...')
@@ -27,7 +29,8 @@ def train(network_specs,
     # create model VAE
     model = MONet(network_specs=network_specs,
                   datapipe=datapipe,
-                  training_params=training_params)
+                  training_params=training_params,
+                  sigmoid_output=sigmoid_output)
 
     # train the model
     # save_config is flexible
@@ -43,8 +46,9 @@ def train(network_specs,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_path', type=str, default='tmp')
-    parser.add_argument('--logs_path', type=str, default='source/monet/logs/tmp')    
+    parser.add_argument('--logs_path', type=str, default='tmp')    
     parser.add_argument('--ckpt_path', type=str, default=None)
+    parser.add_argument('--sigmoid_output', type=bool, default=False)
     parser.add_argument('--epoch', type=int, default=0)
     args = parser.parse_args()
 
@@ -73,4 +77,5 @@ if __name__ == '__main__':
           save_path=save_path,
           logs_path=logs_path,
           ckpt_path=ckpt_path,
+          sigmoid_output=args.sigmoid_output,
           epoch=0)

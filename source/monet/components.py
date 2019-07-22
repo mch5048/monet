@@ -6,12 +6,16 @@ from source.misc import sampler_normal
 class VAE(object):
     def __init__(self,
                  network_specs,
+                 sigmoid_output,
                  scope='component_vae',
                  mode='training'):
 
         self.network_specs = network_specs
+        self.sigmoid_output = sigmoid_output
         self.scope = scope
 
+        print('component_vae sigmoid output: {}'.format(sigmoid_output))
+        
     def __call__(self,
                  images,
                  log_mask,
@@ -49,7 +53,8 @@ class VAE(object):
 
         # i think this should be trained with tf.nn.sigmoid
         # because the means should be between 0 and 1
-        # re_image_mean = tf.nn.sigmoid(re_image_mean)
+        if self.sigmoid_output:
+            re_image_mean = tf.nn.sigmoid(re_image_mean)
         return re_mask, re_image_mean
  
 class UNet(object):
