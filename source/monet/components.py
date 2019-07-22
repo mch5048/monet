@@ -49,9 +49,9 @@ class VAE(object):
 
         # i think this should be trained with tf.nn.sigmoid
         # because the means should be between 0 and 1
-        re_image_mean = tf.nn.sigmoid(re_image_mean)
+        # re_image_mean = tf.nn.sigmoid(re_image_mean)
         return re_mask, re_image_mean
-        
+ 
 class UNet(object):
     def __init__(self,
                  network_specs,

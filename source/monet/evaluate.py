@@ -108,7 +108,7 @@ if __name__ == '__main__':
         training_params = json.load(f)
 
     # load data
-    image_path = 'data/monet_2object_colored_64x64_normalized.npz'
+    image_path = 'data/monet_2object_colored_64x64_normalized_validation.npz'
     # image_path = 'data/reduced.npy'
 
     # save_path

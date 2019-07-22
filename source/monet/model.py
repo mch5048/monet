@@ -59,9 +59,6 @@ class MONet(object):
         component_vae = VAE(network_specs=self.network_specs['vae'])
         # summarizer = Summarizer()
 
-
-        # appending stuff looks cool, but they are the same
-        # deep copy
         self.re_image_means = []
         log_masks = []
         re_masks = []
@@ -120,8 +117,9 @@ class MONet(object):
 
         self.merged = tf.summary.merge_all()
 
-    def train(self, save_path, epoch=0, ckpt_path=None):
-        logs_path = 'source/monet/logs/test'
+    def train(self, save_path, epoch=0, ckpt_path=None, logs_path=None):
+        if not logs_path:
+            logs_path = 'source/monet/logs/test'
 
         if os.path.exists(logs_path):
             inpt = True
@@ -163,6 +161,9 @@ class MONet(object):
             for i in range(n_run):
                 try:
                     summary, l, _ = sess.run([self.merged, self.loss, self.train_op])
+                    if np.isnan(l):
+                        print('loss is nan, exiting...')
+                        sys.exit()
                     epoch_loss.append(l)
                     writer.add_summary(summary, i)
                 except tf.errors.OutOfRangeError:

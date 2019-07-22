@@ -33,7 +33,7 @@ ellipses = images[elems:2*elems]
 heart = images[2*elems:]
 
 # number of examples to create
-N = 5e4
+N = 1e3
 N_same = int(N / 3)
 N_mixed = int(N - N_same)
 
@@ -102,12 +102,14 @@ save_path = '/home/sayvaz/Desktop/MDSprites/train'
 for i in range(int(N)):
     im, r = random_selector()
     images.append(im)
+    '''
     im = np.array(im)
     name = 'MDSprites_{}.png'.format(i)
     path = os.path.join(save_path, name)
     if i == 0:
         print(im.shape)
     plt.imsave(path, im)
+    '''
     d[r] += 1
 
 images = np.array(images) 
@@ -122,6 +124,6 @@ for i in idx:
 
 print('saving...')
 print(d)
-save_path = 'data/monet_2object_colored_64x64_normalized.npz'
+save_path = 'data/monet_2object_colored_64x64_normalized_validation.npz'
 np.savez_compressed(save_path, imgs=images)
 print('saved to {}'.format(save_path))
