@@ -31,7 +31,8 @@ def train(network_specs,
     # create model VAE
     model = MONet(network_specs=network_specs,
                   datapipe=datapipe,
-                  training_params=training_params)
+                  training_params=training_params,
+                  sigmoid_output=sigmoid_output)
 
     # train the model
     # save_config is flexible
