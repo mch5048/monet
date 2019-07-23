@@ -19,7 +19,8 @@ def train(network_specs,
           image_path,
           save_path,
           ckpt_path,
-          batch_size=None):
+          batch_size=None,
+          sigmoid_output=False):
     
     print('creating datapipe...')
     # create images DataPipeline
@@ -62,11 +63,11 @@ def train(network_specs,
             
             # re_image_mean comes as logits, changed it to tf.nn.sigmoid
             # they must come between 0 and 1
-            '''
-            for j in range(3):
-                tmp = r_i[:, :, j]
-                r_i[:, :, j] = (tmp - np.min(tmp)) / (np.max(tmp) - np.min(tmp))
-            '''
+            if not sigmoid_output:
+                print('no sigmoid_output...')
+                for j in range(3):
+                    tmp = r_i[:, :, j]
+                    r_i[:, :, j] = (tmp - np.min(tmp)) / (np.max(tmp) - np.min(tmp))
             exp_r_m = np.exp(r_m)
             print('exp_r_m max, min: ', np.max(exp_r_m), np.min(exp_r_m))
             re_masked = np.repeat(exp_r_m, 3, 2) * r_i
@@ -94,8 +95,9 @@ def train(network_specs,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--epoch', type=int, default=10)
-    parser.add_argument('-b', '--batch_size', type=int, default=None)
+    parser.add_argument('--ckpt_path', type=str, default=None)
+    parser.add_argument('--batch_size', type=int, default=None)
+    parser.add_argument('--sigmoid_output', action='store_true')    
     args = parser.parse_args()
 
     network_specs_json = 'source/monet/params/test/model.json'
@@ -115,11 +117,14 @@ if __name__ == '__main__':
     save_path = None
 
     # ckpt path to continue training or to evaluate
-    ckpt_path = 'source/monet/tmp/epoch_{}.ckpt'.format(args.epoch)
+    ckpt_path = args.ckpt_path
+    batch_size = args.batch_size
+    sigmoid_output = args.sigmoid_output
 
     train(network_specs=network_specs,
           training_params=training_params,
           image_path=image_path,
           save_path=save_path,
           ckpt_path=ckpt_path,
-          batch_size=args.batch_size)
+          batch_size=batch_size,
+          sigmoid_output=sigmoid_output)
