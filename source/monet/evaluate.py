@@ -57,41 +57,62 @@ def train(network_specs,
     '''
 
     for i in range(batch_size):
+
+        rec_image_remask = 0
+        rec_image_mask = 0
         for k in range(rows):
-            print('step {}'.format(k))
+            # print('step {}'.format(k))
             r_i, r_m, m = re_image_mean[k][i], re_log_softmax[k][i], log_masks[k][i]
-            print('re_image max, min: ', np.max(r_i), np.min(r_i))
+            # print('re_image max, min: ', np.max(r_i), np.min(r_i))
             
             # re_image_mean comes as logits, changed it to tf.nn.sigmoid
             # they must come between 0 and 1
+            
             if not sigmoid_output:
                 print('no sigmoid_output...')
                 for j in range(3):
                     tmp = r_i[:, :, j]
                     r_i[:, :, j] = (tmp - np.min(tmp)) / (np.max(tmp) - np.min(tmp))
+            
             exp_r_m = np.exp(r_m)
-            print('exp_r_m max, min: ', np.max(exp_r_m), np.min(exp_r_m))
+            # print('exp_r_m max, min: ', np.max(exp_r_m), np.min(exp_r_m))
             re_masked = np.repeat(exp_r_m, 3, 2) * r_i
-            print('re_masked max, min: ', np.max(re_masked), np.min(re_masked))
+            rec_image_remask += re_masked
+            # print('re_masked max, min: ', np.max(re_masked), np.min(re_masked))
             exp_m = np.exp(m)
-            print('exp_m max, min: ', np.max(exp_m), np.min(exp_m), exp_m.shape)
+            # print('exp_m max, min: ', np.max(exp_m), np.min(exp_m), exp_m.shape)
             masked = np.repeat(exp_m, 3, 2) * r_i
-            print('masked max, min: ', np.max(masked), np.min(masked))
-            print('')
-            print('')
-            plt.subplot(rows+1, cols, cols*k+1)
+            rec_image_mask += masked
+            # print('masked max, min: ', np.max(masked), np.min(masked))
+            # print('')
+            # print('')
+            ax1 = plt.subplot(rows+1, cols, cols*k+1)
+            # ax1.set_title('slots with reconstructed masks')
             plt.imshow(re_masked)
-            plt.subplot(rows+1, cols, cols*k+2)
-            plt.imshow(r_i)
-            plt.subplot(rows+1, cols, cols*k+3)
+            ax2 = plt.subplot(rows+1, cols, cols*k+2)
+            # ax2.set_title('reconstructed masks from component vae')
             plt.imshow(np.exp(np.squeeze(r_m)), cmap='gray')
-            plt.subplot(rows+1, cols, cols*k+4)
+            ax3 = plt.subplot(rows+1, cols, cols*k+3)
+            # ax3.set_title('slots with learned masks')
             plt.imshow(masked)
-            plt.subplot(rows+1, cols, cols*k+5)
+            ax4 = plt.subplot(rows+1, cols, cols*k+4)
+            # ax4.set_title('learned masks from attention network')
             plt.imshow(np.exp(np.squeeze(m)), cmap='gray')
-        plt.subplot(rows+1, cols, (rows+1)*cols-(cols//2))
+            ax5 = plt.subplot(rows+1, cols, cols*k+5)
+            # ax5.set_title('reconstructed slots')
+            plt.imshow(r_i)
+            
+        bottom = (rows+1)*cols-(cols//2)
+        ax6 = plt.subplot(rows+1, cols, bottom - 1)
+        ax6.set_title('original image')
         plt.imshow(next_images[i])
-        plt.colorbar()
+        ax7 = plt.subplot(rows+1, cols, bottom)
+        ax7.set_title('with reconstructed masks')
+        plt.imshow(rec_image_remask)
+        ax8 = plt.subplot(rows+1, cols, bottom + 1)
+        ax8.set_title('with learned masks')
+        plt.imshow(rec_image_mask)
+        
         plt.show()
 
 if __name__ == '__main__':
