@@ -14,4 +14,4 @@ operations such as spatial softmax.
 ## out/
 contains fails and successes of this implementation
 
-1. [https://arxiv.org/abs/1901.11390](MONet: Unsupervised Scene Decomposition and Representation)
+1. [MONet: Unsupervised Scene Decomposition and Representation](https://arxiv.org/abs/1901.11390)
